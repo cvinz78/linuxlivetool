@@ -8,7 +8,7 @@
 
 ### Was ist LinuxLiveTool?
 
-`live-toolbox.sh` ist **ein einziges, in sich geschlossenes Bash-Skript**, das die vier
+`live-toolbox.sh` ist **ein einziges, in sich geschlossenes shell-Skript**, das die vier
 LinuxLiveTools für **Ubuntu, Debian, Arch und Alpine** enthält. Jedes Tool kann:
 
 - eine **Live-ISO vom laufenden System** erstellen (BIOS **und** UEFI bootfähig, remastert — das eigene System als bootbares Abbild),
@@ -22,7 +22,7 @@ entpackt und ausgeführt.
 
 ### Schnellstart
 
-```bash
+```shell
 chmod +x live-toolbox.sh
 ./live-toolbox.sh              # interaktives Menü
 ```
@@ -69,7 +69,7 @@ Besonderheiten:
 
 ### Befehlszeile (CLI)
 
-```bash
+```shell
 ./live-toolbox.sh                       # interaktives Menü (Standard: Deutsch)
 
 ./live-toolbox.sh -x  <verzeichnis>     # alle 4 Tools flach entpacken
@@ -90,7 +90,7 @@ Tools unberührt; nur tatsächlich geänderte werden ersetzt.
 
 Jedes Tool ist auch **einzeln lauffähig** und bietet dieselbe Extraktion:
 
-```bash
+```shell
 ./ubuntulive-tool  -x <verz>   # oder: export -s 1,2,3 -o <verz>
 ./debianlive-tool  -x <verz>
 ./archlive-tool    -x <verz>
@@ -121,7 +121,7 @@ einrichten — das Skript liefert es nicht mit.
 
 ### Voraussetzungen
 
-- Linux, `bash` bzw. POSIX-`sh` (busybox-ash reicht für das Alpine-Tool)
+- Linux, `shell` bzw. POSIX-`sh` (busybox-ash reicht für das Alpine-Tool)
 - Root-Rechte für schreibende Aktionen (werden per `sudo` — Fallback `su` — angefordert)
 - Für den ISO-Bau: die jeweiligen Pakete (z. B. `xorriso`, `squashfs-tools`,
   `syslinux`, `grub-bios`, `grub-efi`, `mtools`); das Alpine-Tool erkennt fehlende
@@ -152,7 +152,7 @@ Installations-Tool schreiben auf Festplatten!
 
 ### What is LinuxLiveTool?
 
-`live-toolbox.sh` is **a single, self-contained bash script** containing the four
+`live-toolbox.sh` is **a single, self-contained shell script** containing the four
 LinuxLiveTools for **Ubuntu, Debian, Arch and Alpine**. Each tool can:
 
 - create a **live ISO from the running system** (bootable on BIOS **and** UEFI,
@@ -167,7 +167,7 @@ on demand.
 
 ### Quick start
 
-```bash
+```shell
 chmod +x live-toolbox.sh
 ./live-toolbox.sh              # interactive menu
 ```
@@ -214,7 +214,7 @@ Details:
 
 ### Command line (CLI)
 
-```bash
+```shell
 ./live-toolbox.sh                       # interactive menu (default: German)
 
 ./live-toolbox.sh -x  <directory>       # extract all 4 tools, flat
@@ -235,7 +235,7 @@ left untouched; only actually changed ones are replaced.
 
 Every tool also runs **standalone** and offers the same extraction:
 
-```bash
+```shell
 ./ubuntulive-tool  -x <dir>   # or: export -s 1,2,3 -o <dir>
 ./debianlive-tool  -x <dir>
 ./archlive-tool    -x <dir>
@@ -266,7 +266,7 @@ the script does not ship it.
 
 ### Requirements
 
-- Linux, `bash` or POSIX-`sh` (busybox-ash is sufficient for the Alpine tool)
+- Linux, `shell` or POSIX-`sh` (busybox-ash is sufficient for the Alpine tool)
 - Root privileges for write actions (requested via `sudo` — fallback `su`)
 - For building ISOs: the respective packages (e.g. `xorriso`, `squashfs-tools`,
   `syslinux`, `grub-bios`, `grub-efi`, `mtools`); the Alpine tool detects missing
