@@ -66,6 +66,8 @@ Besonderheiten:
 - **ubuntu/debian/archlive-tool** fragen Root-Rechte an, sobald eine Aktion sie
   benötigt, und führen **direkt die gewählte Aktion** als root aus — keine erneute
   Menüauswahl nach dem Root-Wechsel.
+- **Eigene Tools einpflegen:** mit `-x` entpacken, ändern, mit `-r` wieder
+  einbetten — Details im Abschnitt [Tools aktualisieren](#tools-aktualisieren--der--r-workflow).
 
 ### Befehlszeile (CLI)
 
@@ -96,6 +98,42 @@ Jedes Tool ist auch **einzeln lauffähig** und bietet dieselbe Extraktion:
 ./archlive-tool    -x <verz>
 ./alpinelive-tool  -x <verz>   # schreibt mkalpe-live.sh, alpe-install.sh, alpe-part
 ```
+
+### Tools aktualisieren — der `-r`-Workflow
+
+Die vier Tools sind **eingebettet** — zum Ändern musst du `live-toolbox.sh` nie
+direkt anfassen. Der sichere Weg:
+
+```shell
+./live-toolbox.sh -x  ~/tools     # 1. alle 4 Tools entpacken (flach)
+
+#  2. Tool(s) in ~/tools bearbeiten und VORHER einzeln testen,
+#     z. B.:  ./ubuntulive-tool part
+
+./live-toolbox.sh -r  ~/tools     # 3. Änderungen wieder einbetten
+```
+
+**Was `-r` genau macht:**
+
+- vergleicht jedes entpackte Tool mit der eingebetteten Version und bettet
+  **nur tatsächlich geänderte** Tools wieder ein — alles Unveränderte bleibt an
+  seiner Stelle
+- legt **vorher automatisch eine Sicherung** an (`live-toolbox.sh.bak`) —
+  du kannst also jederzeit einen Schritt zurück
+- erhöht die **VERSION um 0.1** (mit Überlauf: 1.9 → 2.0), damit du am
+  Versionsstand siehst, welchen Stand du gerade hast — `-v` zeigt die
+  Versionen aller Tools live an
+- meldet *„Keine veränderten Skripte - nichts zu tun"*, wenn du nichts
+  geändert hast — dann passiert auch nichts
+
+**Wichtig zu wissen:**
+
+- `-r` erwartet die **Tool-Dateien** aus `-x` (also z. B. `ubuntulive-tool`
+  selbst). Die mit `-xx` exportierten Einzelskripte (install/iso/part) sind
+  eigenständige Dateien und werden **nicht** wieder eingebettet.
+- Das Backup `.bak` wird bei **jedem** Re-Embed neu überschrieben — es gilt
+  immer nur für den letzten Lauf. Willst du länger zurück, sichere die Datei
+  zusätzlich von Hand.
 
 ### Sprache
 
@@ -209,6 +247,8 @@ Details:
 - **ubuntu/debian/archlive-tool** request root privileges as soon as an action
   needs them and then **execute the selected action directly as root** — no
   repeated menu selection after the root switch.
+- **Update your own tools:** extract with `-x`, modify, re-embed with `-r` —
+  details in [Updating tools](#updating-tools--the--r-workflow).
 
 ### Command line (CLI)
 
@@ -239,6 +279,39 @@ Every tool also runs **standalone** and offers the same extraction:
 ./archlive-tool    -x <dir>
 ./alpinelive-tool  -x <dir>   # writes mkalpe-live.sh, alpe-install.sh, alpe-part
 ```
+
+### Updating tools — the `-r` workflow
+
+The four tools are **embedded** — you never have to touch `live-toolbox.sh`
+directly to change them. The safe path:
+
+```shell
+./live-toolbox.sh -x  ~/tools     # 1. extract all 4 tools (flat)
+
+#  2. edit the tool(s) in ~/tools and test them standalone FIRST,
+#     e.g.:  ./ubuntulive-tool part
+
+./live-toolbox.sh -r  ~/tools     # 3. re-embed your changes
+```
+
+**What `-r` does exactly:**
+
+- compares each extracted tool against the embedded version and re-embeds
+  **only the tools that actually changed** — everything untouched stays as is
+- **creates a backup automatically first** (`live-toolbox.sh.bak`) — you can
+  always go back one step
+- bumps the **VERSION by 0.1** (with rollover: 1.9 → 2.0) so the version
+  tells you which state you are on — `-v` shows all tool versions live
+- reports *"No changed scripts found - nothing to do"* when you changed
+  nothing — and then does nothing
+
+**Good to know:**
+
+- `-r` expects the **tool files** from `-x` (e.g. `ubuntulive-tool` itself).
+  The standalone scripts exported with `-xx` (install/iso/part) are separate
+  files and are **not** re-embedded.
+- The `.bak` backup is **overwritten on every** re-embed — it only covers the
+  last run. To go back further, keep an extra copy by hand.
 
 ### Language
 
