@@ -87,6 +87,8 @@ Besonderheiten:
 ./live-toolbox.sh -h                    # Hilfe
 ```
 
+Was `-x`, `-xx` und `-r` im Detail machen: eigene Abschnitte direkt unterhalb.
+
 Verzeichnisse werden bei Bedarf automatisch angelegt. Bei `-r` bleiben unveränderte
 Tools unberührt; nur tatsächlich geänderte werden ersetzt.
 
@@ -98,6 +100,54 @@ Jedes Tool ist auch **einzeln lauffähig** und bietet dieselbe Extraktion:
 ./archlive-tool    -x <verz>
 ./alpinelive-tool  -x <verz>   # schreibt mkalpe-live.sh, alpe-install.sh, alpe-part
 ```
+
+### Tools extrahieren — `-x`
+
+Holt die vier eingebetteten Tools aus dem Bündel heraus — **flach** in ein
+Zielverzeichnis (wird bei Bedarf automatisch angelegt), **byte-identisch** und
+ausführbar:
+
+```shell
+./live-toolbox.sh -x ~/tools
+```
+
+Ergebnis:
+
+```text
+~/tools/ubuntulive-tool
+~/tools/debianlive-tool
+~/tools/archlive-tool
+~/tools/alpinelive-tool
+```
+
+Wofür: die Tools einzeln starten und ausprobieren, an andere weitergeben —
+oder als Grundlage für eigene Anpassungen (→ zurück ins Bündel mit `-r`,
+siehe unten).
+
+### Einzelskripte exportieren — `-xx`
+
+Jedes Tool enthält seine **drei Bausteine** (Installation / ISO / Partitionierer)
+selbst. Mit `-xx` werden sie über die eingebaute Export-Funktion als
+**eigenständige, separat lauffähige Skripte** geschrieben:
+
+```shell
+./live-toolbox.sh -xx ~/skripte        # alle 4 Distributionen (12 Dateien)
+./live-toolbox.sh -xx arch ~/skripte   # nur arch
+                                       #   (arch | alpine | ubuntu | debian | all)
+```
+
+Ergebnis für arch:
+
+```text
+~/skripte/archlive-tool-install.sh
+~/skripte/archlive-tool-iso.sh
+~/skripte/archlive-tool-part.sh
+```
+
+Wofür: an den einzelnen Bausteinen arbeiten, ohne das große Tool im Blick zu
+haben. **Wichtig:** Diese Einzelskripte laufen unabhängig, werden aber **nicht**
+über `-r` zurück ins Bündel gebracht — das gilt nur für die Tool-Dateien aus
+`-x`.
 
 ### Tools aktualisieren — der `-r`-Workflow
 
@@ -268,6 +318,8 @@ Details:
 ./live-toolbox.sh -h                    # help
 ```
 
+What `-x`, `-xx` and `-r` do in detail: dedicated sections right below.
+
 Directories are created automatically if missing. With `-r`, unchanged tools are
 left untouched; only actually changed ones are replaced.
 
@@ -279,6 +331,53 @@ Every tool also runs **standalone** and offers the same extraction:
 ./archlive-tool    -x <dir>
 ./alpinelive-tool  -x <dir>   # writes mkalpe-live.sh, alpe-install.sh, alpe-part
 ```
+
+### Extracting tools — `-x`
+
+Pulls the four embedded tools out of the bundle — **flat** into a target
+directory (created automatically if missing), **byte-identical** and
+executable:
+
+```shell
+./live-toolbox.sh -x ~/tools
+```
+
+Result:
+
+```text
+~/tools/ubuntulive-tool
+~/tools/debianlive-tool
+~/tools/archlive-tool
+~/tools/alpinelive-tool
+```
+
+Use cases: run and try the tools standalone, share them — or use them as a
+starting point for your own modifications (→ back into the bundle with `-r`,
+see below).
+
+### Exporting standalone scripts — `-xx`
+
+Each tool contains its **three building blocks** (installation / ISO /
+partitioner) internally. With `-xx` they are written out via the built-in
+export function as **independent, separately runnable scripts**:
+
+```shell
+./live-toolbox.sh -xx ~/scripts        # all 4 distros (12 files)
+./live-toolbox.sh -xx arch ~/scripts   # arch only
+                                       #   (arch | alpine | ubuntu | debian | all)
+```
+
+Result for arch:
+
+```text
+~/scripts/archlive-tool-install.sh
+~/scripts/archlive-tool-iso.sh
+~/scripts/archlive-tool-part.sh
+```
+
+Use case: work on individual building blocks without the big tool in the way.
+**Important:** These standalone scripts run on their own but are **not** put
+back into the bundle via `-r` — that only applies to the tool files from `-x`.
 
 ### Updating tools — the `-r` workflow
 
