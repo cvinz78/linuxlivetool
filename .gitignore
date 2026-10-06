@@ -13,3 +13,6 @@ old/
 .header-syntax.tmp
 cvinz
 cvinz.pub
+
+# Avatar nur lokal (Profilbild), nicht im Repo
+avatar*
