@@ -66,8 +66,6 @@ Besonderheiten:
 - **ubuntu/debian/archlive-tool** fragen Root-Rechte an, sobald eine Aktion sie
   benötigt, und führen **direkt die gewählte Aktion** als root aus — keine erneute
   Menüauswahl nach dem Root-Wechsel.
-- **Warnungen und Fehler** erscheinen überall in HELLROT, Überschriften in
-  Hellcyan, Menüs in Hellgelb (Farbschema `DESIGN.md`).
 
 ### Befehlszeile (CLI)
 
@@ -211,8 +209,6 @@ Details:
 - **ubuntu/debian/archlive-tool** request root privileges as soon as an action
   needs them and then **execute the selected action directly as root** — no
   repeated menu selection after the root switch.
-- **Warnings and errors** are always shown in BRIGHT RED, headers in bright cyan,
-  menus in bright yellow (color scheme `DESIGN.md`).
 
 ### Command line (CLI)
 
