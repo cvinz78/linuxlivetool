@@ -1,5 +1,7 @@
 # LinuxLiveTool (LLT)
 
+![LinuxLiveTool Banner](banner.png)
+
 **Deutsch** | [English](#english)
 
 ---
