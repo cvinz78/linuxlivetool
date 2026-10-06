@@ -217,6 +217,13 @@ einrichten — das Skript liefert es nicht mit.
 
 ### Aufbau
 
+Jedes der vier Tools — `ubuntulive-tool`, `debianlive-tool`, `archlive-tool`
+und `alpinelive-tool` — ist selbst wieder ein **Bündel von Skripten für seine
+Distribution**: Es besteht aus jeweils **drei Skripten** mit den Funktionen
+**ISO bauen**, **installieren** und **partitionieren** (beim Alpine-Tool:
+`mkalpe-live.sh`, `alpe-install.sh`, `alpe-part`). Die drei Einzelskripte
+lassen sich mit `-xx` exportieren und laufen dann eigenständig.
+
 Die vier Tools liegen zwischen Marker-Zeilen im Skript
 (`#@@@SCRIPT:<distro>/<datei>@@@` … `#@@@END:…@@@`), nach `exit 0` als reiner
 Datenblock — sie werden nie von der Shell des Wrappers geparst. Mit `-x`/`-xx`
@@ -443,6 +450,13 @@ the script does not ship it.
   packages and offers installation via `apk`
 
 ### Structure
+
+Each of the four tools — `ubuntulive-tool`, `debianlive-tool`, `archlive-tool`
+and `alpinelive-tool` — is itself again a **bundle of scripts for its
+distribution**: it consists of **three scripts** with the functions
+**build ISO**, **install** and **partition** (for the Alpine tool:
+`mkalpe-live.sh`, `alpe-install.sh`, `alpe-part`). These three standalone
+scripts can be exported with `-xx` and then run independently.
 
 The four tools sit between marker lines inside the script
 (`#@@@SCRIPT:<distro>/<file>@@@` … `#@@@END:…@@@`), after `exit 0` as a pure data
