@@ -16,3 +16,7 @@ cvinz.pub
 
 # Avatar nur lokal (Profilbild), nicht im Repo
 avatar*
+
+# lokale Hilfsdateien (nicht ins Repo)
+gitpush
+anleitung.txt
