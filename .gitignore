@@ -11,3 +11,5 @@ old/
 *.bak
 .chk.tmp
 .header-syntax.tmp
+cvinz
+cvinz.pub
