@@ -1,0 +1,13 @@
+# Versteckte Dateien/Ordner NICHT auf GitHub (Nutzeranordnung)
+.*
+!.gitignore
+
+# Dokumentation nicht ins Git (README ist die GitHub-Hauptseite -> Ausnahme)
+*.md
+!README.md
+
+# Backups und Arbeitsreste gehoeren ebenfalls nicht ins Repo
+old/
+*.bak
+.chk.tmp
+.header-syntax.tmp
