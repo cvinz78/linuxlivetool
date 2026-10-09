@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# live-toolbox - Sammel-Skript: die 4 *live-tool Hauptskripte eingebettet
+# linuxlivetool - Sammel-Skript: die 4 *live-tool Hauptskripte eingebettet
 # (ubuntu/debian/arch/alpine; die Install/ISO/Part-Einzelskripte sind bewusst
 #  NICHT eingebettet - sie lassen sich bei Bedarf separat entpacken)
 #
@@ -59,8 +59,8 @@ DIST_ORDER=(alpine arch debian ubuntu)
 t() {
     local key=$1; shift
     case "$key:$SPRACHE" in
-    u_title:EN) printf 'live-toolbox v%s - collection script (ubuntu/debian/arch/alpine)' "$1" ;;
-    u_title:*)  printf 'live-toolbox v%s - Sammel-Skript (ubuntu/debian/arch/alpine)' "$1" ;;
+    u_title:EN) printf 'linuxlivetool v%s - collection script (ubuntu/debian/arch/alpine)' "$1" ;;
+    u_title:*)  printf 'linuxlivetool v%s - Sammel-Skript (ubuntu/debian/arch/alpine)' "$1" ;;
     u_call:EN)  printf 'Usage: %s [-de|-en] [-x <dir> | -xx [distro] <dir> | -r <dir>] [-nc] [-v] [-h]' "$1" ;;
     u_call:*)   printf 'Aufruf: %s [-de|-en] [-x <verz> | -xx [distro] <verz> | -r <verz>] [-nc] [-v] [-h]' "$1" ;;
     u_noargs:EN) printf '%s\n' "  Without arguments   interactive menu" ;;
@@ -89,8 +89,8 @@ t() {
     e_distro:*)  printf 'Unbekannte Distribution: %s (erlaubt: ubuntu, debian, arch, alpine, all)\n'  "$1" ;;
     e_unknown:EN) printf 'Unknown option: %s' "$1" ;;
     e_unknown:*)  printf 'Unbekannte Option: %s' "$1" ;;
-    m_title:EN) printf '  live-toolbox v%s - live tools collection script' "$1" ;;
-    m_title:*)  printf '  live-toolbox v%s - Live-Tools Sammel-Skript' "$1" ;;
+    m_title:EN) printf '  linuxlivetool v%s - live tools collection script' "$1" ;;
+    m_title:*)  printf '  linuxlivetool v%s - Live-Tools Sammel-Skript' "$1" ;;
     m_0:EN)  printf '%s\n' "  0)  Quit" ;;
     m_0:*)   printf '%s\n' "  0)  Beenden" ;;
     m_00:EN) printf '%s\n' "  00) Quit" ;;
@@ -117,8 +117,8 @@ t() {
     r_err:*)  printf '%sBeendet (RC=%s): %s%s' "$RED_H" "$1" "$2" "$RESET" ;;
     pause:EN) printf '%sPress Enter to continue... %s' "$YELLOW_H" "$RESET" ;;
     pause:*)  printf '%sEnter zum Fortfahren... %s' "$YELLOW_H" "$RESET" ;;
-    x_title:EN) printf 'live-toolbox v%s - extracting' "$1" ;;
-    x_title:*)  printf 'live-toolbox v%s - Entpacken' "$1" ;;
+    x_title:EN) printf 'linuxlivetool v%s - extracting' "$1" ;;
+    x_title:*)  printf 'linuxlivetool v%s - Entpacken' "$1" ;;
     e_not_dir:EN) printf 'ERROR: %s exists but is not a directory.' "$1" ;;
     e_not_dir:*)  printf 'FEHLER: %s existiert, ist aber kein Verzeichnis.' "$1" ;;
     e_mkdir:EN) printf 'ERROR: directory %s could not be created.' "$1" ;;
@@ -129,8 +129,8 @@ t() {
     x_one:*)  printf '%s  entpackt: %s%s' "$GREEN_O" "$1" "$RESET" ;;
     x_done:EN) printf '%s scripts extracted to: %s' "$1" "$2" ;;
     x_done:*)  printf '%s Skripte entpackt nach: %s' "$1" "$2" ;;
-    xx_title:EN) printf 'live-toolbox v%s - extracting standalone scripts' "$1" ;;
-    xx_title:*)  printf 'live-toolbox v%s - Einzelskripte entpacken' "$1" ;;
+    xx_title:EN) printf 'linuxlivetool v%s - extracting standalone scripts' "$1" ;;
+    xx_title:*)  printf 'linuxlivetool v%s - Einzelskripte entpacken' "$1" ;;
     ep_distro:EN) err "ERROR: Unknown distribution '${1}' (allowed: ubuntu, debian, arch, alpine, all)." ;;
     ep_distro:*)  err "FEHLER: Unbekannte Distribution '${1}' (erlaubt: ubuntu, debian, arch, alpine, all)." ;;
     ep_start:EN) printf '%sExporting the 3 standalone scripts (%s) to: %s%s' "$MAGENTA_L" "$1" "$2" "$RESET" ;;
@@ -139,8 +139,8 @@ t() {
     ep_done:*)  printf '%sFertig: Einzelskripte (%s) in %s%s' "$GREEN_O" "$1" "$2" "$RESET" ;;
     ep_fail:EN) printf '%sExport failed (%s, RC=%s).%s' "$RED_H" "$1" "$2" "$RESET" >&2 ;;
     ep_fail:*)  printf '%sExport fehlgeschlagen (%s, RC=%s).%s' "$RED_H" "$1" "$2" "$RESET" >&2 ;;
-    re_title:EN) printf 'live-toolbox v%s - re-embedding from: %s' "$1" "$2" ;;
-    re_title:*)  printf 'live-toolbox v%s - Wieder-Einbetten aus: %s' "$1" "$2" ;;
+    re_title:EN) printf 'linuxlivetool v%s - re-embedding from: %s' "$1" "$2" ;;
+    re_title:*)  printf 'linuxlivetool v%s - Wieder-Einbetten aus: %s' "$1" "$2" ;;
     re_nodir:EN) printf 'ERROR: directory %s does not exist.' "$1" >&2 ;;
     re_nodir:*)  printf 'FEHLER: Verzeichnis %s existiert nicht.' "$1" >&2 ;;
     re_nothing:EN) printf '%s\n' "No changed scripts found - nothing to do." ;;
@@ -373,7 +373,7 @@ reembed() {
 
     # Neue Datei schreiben, VERSION um 0.1 erhoehen
     local tmpout nv
-    tmpout="$(mktemp "$(dirname -- "$SELF")/.live-toolbox.XXXXXX")" \
+    tmpout="$(mktemp "$(dirname -- "$SELF")/.linuxlivetool.XXXXXX")" \
         || { err "$(t re_tmpout)"; exit 1; }
     printf '%s\n' "${out[@]}" > "$tmpout"
     # major.minor-String-Arithmetik (awk %.1f wuerde 1.12+0.1=1.2 runden!)
@@ -488,7 +488,7 @@ main_menu() {
 #-------------------------------------------------------------------------------
 if (( SHOW_VERSION )); then
     # bewusst ohne Farben, damit maschinenlesbar
-    echo "live-toolbox v${TOOLBOX_VERSION}"
+    echo "linuxlivetool v${TOOLBOX_VERSION}"
     # Versionen der eingebetteten Tools mit ausgeben - so sieht man sofort,
     # ob das Bundle aktuell ist (ein Skript mit altem Stand = Bundle erneuern)
     while IFS= read -r n; do

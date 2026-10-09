@@ -10,7 +10,7 @@
 
 ### Was ist LinuxLiveTool?
 
-`live-toolbox.sh` ist **ein einziges, in sich geschlossenes shell-Skript**, das die vier
+`linuxlivetool.sh` ist **ein einziges, in sich geschlossenes shell-Skript**, das die vier
 LinuxLiveTools für **Ubuntu, Debian, Arch und Alpine** enthält. Jedes Tool kann:
 
 - eine **Live-ISO vom laufenden System** erstellen (BIOS **und** UEFI bootfähig, remastert — das eigene System als bootbares Abbild),
@@ -25,8 +25,8 @@ entpackt und ausgeführt.
 ### Schnellstart
 
 ```shell
-chmod +x live-toolbox.sh
-./live-toolbox.sh              # interaktives Menü
+chmod +x linuxlivetool.sh
+./linuxlivetool.sh              # interaktives Menü
 ```
 
 ### Das Hauptmenü
@@ -72,19 +72,19 @@ Besonderheiten:
 ### Befehlszeile (CLI)
 
 ```shell
-./live-toolbox.sh                       # interaktives Menü (Standard: Deutsch)
+./linuxlivetool.sh                       # interaktives Menü (Standard: Deutsch)
 
-./live-toolbox.sh -x  <verzeichnis>     # alle 4 Tools flach entpacken
-./live-toolbox.sh -xx <verzeichnis>     # die 12 Einzelskripte aller 4 Distributionen entpacken
-./live-toolbox.sh -xx arch <verzeichnis># nur die 3 Einzelskripte einer Distribution
+./linuxlivetool.sh -x  <verzeichnis>     # alle 4 Tools flach entpacken
+./linuxlivetool.sh -xx <verzeichnis>     # die 12 Einzelskripte aller 4 Distributionen entpacken
+./linuxlivetool.sh -xx arch <verzeichnis># nur die 3 Einzelskripte einer Distribution
                                         #   (arch | alpine | ubuntu | debian | all)
-./live-toolbox.sh -r  <verzeichnis>     # veraenderte Tools aus -x/-xx wieder einbetten
+./linuxlivetool.sh -r  <verzeichnis>     # veraenderte Tools aus -x/-xx wieder einbetten
                                         #   (VERSION wird um 0.1 erhöht, Backup .bak)
-./live-toolbox.sh -v                    # Version + Versionen aller enthaltenen Tools
-./live-toolbox.sh -de | -en             # Sprache erzwingen (Standard: DE)
-./live-toolbox.sh -nc                   # ohne Farben (Fallback für ältere Konsolen;
+./linuxlivetool.sh -v                    # Version + Versionen aller enthaltenen Tools
+./linuxlivetool.sh -de | -en             # Sprache erzwingen (Standard: DE)
+./linuxlivetool.sh -nc                   # ohne Farben (Fallback für ältere Konsolen;
                                         #   Farben sind bei nicht-Terminal automatisch aus)
-./live-toolbox.sh -h                    # Hilfe
+./linuxlivetool.sh -h                    # Hilfe
 ```
 
 Was `-x`, `-xx` und `-r` im Detail machen: eigene Abschnitte direkt unterhalb.
@@ -108,7 +108,7 @@ Zielverzeichnis (wird bei Bedarf automatisch angelegt), **byte-identisch** und
 ausführbar:
 
 ```shell
-./live-toolbox.sh -x ~/tools
+./linuxlivetool.sh -x ~/tools
 ```
 
 Ergebnis:
@@ -131,8 +131,8 @@ selbst. Mit `-xx` werden sie über die eingebaute Export-Funktion als
 **eigenständige, separat lauffähige Skripte** geschrieben:
 
 ```shell
-./live-toolbox.sh -xx ~/skripte        # alle 4 Distributionen (12 Dateien)
-./live-toolbox.sh -xx arch ~/skripte   # nur arch
+./linuxlivetool.sh -xx ~/skripte        # alle 4 Distributionen (12 Dateien)
+./linuxlivetool.sh -xx arch ~/skripte   # nur arch
                                        #   (arch | alpine | ubuntu | debian | all)
 ```
 
@@ -151,16 +151,16 @@ haben. **Wichtig:** Diese Einzelskripte laufen unabhängig, werden aber **nicht*
 
 ### Tools aktualisieren — der `-r`-Workflow
 
-Die vier Tools sind **eingebettet** — zum Ändern musst du `live-toolbox.sh` nie
+Die vier Tools sind **eingebettet** — zum Ändern musst du `linuxlivetool.sh` nie
 direkt anfassen. Der sichere Weg:
 
 ```shell
-./live-toolbox.sh -x  ~/tools     # 1. alle 4 Tools entpacken (flach)
+./linuxlivetool.sh -x  ~/tools     # 1. alle 4 Tools entpacken (flach)
 
 #  2. Tool(s) in ~/tools bearbeiten und VORHER einzeln testen,
 #     z. B.:  ./ubuntulive-tool part
 
-./live-toolbox.sh -r  ~/tools     # 3. Änderungen wieder einbetten
+./linuxlivetool.sh -r  ~/tools     # 3. Änderungen wieder einbetten
 ```
 
 **Was `-r` genau macht:**
@@ -168,7 +168,7 @@ direkt anfassen. Der sichere Weg:
 - vergleicht jedes entpackte Tool mit der eingebetteten Version und bettet
   **nur tatsächlich geänderte** Tools wieder ein — alles Unveränderte bleibt an
   seiner Stelle
-- legt **vorher automatisch eine Sicherung** an (`live-toolbox.sh.bak`) —
+- legt **vorher automatisch eine Sicherung** an (`linuxlivetool.sh.bak`) —
   du kannst also jederzeit einen Schritt zurück
 - erhöht die **VERSION um 0.1** (mit Überlauf: 1.9 → 2.0), damit du am
   Versionsstand siehst, welchen Stand du gerade hast — `-v` zeigt die
@@ -247,7 +247,7 @@ Installations-Tool schreiben auf Festplatten!
 
 ### What is LinuxLiveTool?
 
-`live-toolbox.sh` is **a single, self-contained shell script** containing the four
+`linuxlivetool.sh` is **a single, self-contained shell script** containing the four
 LinuxLiveTools for **Ubuntu, Debian, Arch and Alpine**. Each tool can:
 
 - create a **live ISO from the running system** (bootable on BIOS **and** UEFI,
@@ -263,8 +263,8 @@ on demand.
 ### Quick start
 
 ```shell
-chmod +x live-toolbox.sh
-./live-toolbox.sh              # interactive menu
+chmod +x linuxlivetool.sh
+./linuxlivetool.sh              # interactive menu
 ```
 
 ### The main menu
@@ -310,19 +310,19 @@ Details:
 ### Command line (CLI)
 
 ```shell
-./live-toolbox.sh                       # interactive menu (default: German)
+./linuxlivetool.sh                       # interactive menu (default: German)
 
-./live-toolbox.sh -x  <directory>       # extract all 4 tools, flat
-./live-toolbox.sh -xx <directory>       # extract the 12 standalone scripts of all 4 distros
-./live-toolbox.sh -xx arch <directory>  # only the 3 standalone scripts of one distro
+./linuxlivetool.sh -x  <directory>       # extract all 4 tools, flat
+./linuxlivetool.sh -xx <directory>       # extract the 12 standalone scripts of all 4 distros
+./linuxlivetool.sh -xx arch <directory>  # only the 3 standalone scripts of one distro
                                         #   (arch | alpine | ubuntu | debian | all)
-./live-toolbox.sh -r  <directory>       # re-embed modified tools from -x/-xx
+./linuxlivetool.sh -r  <directory>       # re-embed modified tools from -x/-xx
                                         #   (VERSION is bumped by 0.1, backup .bak)
-./live-toolbox.sh -v                    # version + versions of all embedded tools
-./live-toolbox.sh -de | -en             # force language (default: German)
-./live-toolbox.sh -nc                   # no colors (fallback for older terminals;
+./linuxlivetool.sh -v                    # version + versions of all embedded tools
+./linuxlivetool.sh -de | -en             # force language (default: German)
+./linuxlivetool.sh -nc                   # no colors (fallback for older terminals;
                                         #   colors are also off when not a terminal)
-./live-toolbox.sh -h                    # help
+./linuxlivetool.sh -h                    # help
 ```
 
 What `-x`, `-xx` and `-r` do in detail: dedicated sections right below.
@@ -346,7 +346,7 @@ directory (created automatically if missing), **byte-identical** and
 executable:
 
 ```shell
-./live-toolbox.sh -x ~/tools
+./linuxlivetool.sh -x ~/tools
 ```
 
 Result:
@@ -369,8 +369,8 @@ partitioner) internally. With `-xx` they are written out via the built-in
 export function as **independent, separately runnable scripts**:
 
 ```shell
-./live-toolbox.sh -xx ~/scripts        # all 4 distros (12 files)
-./live-toolbox.sh -xx arch ~/scripts   # arch only
+./linuxlivetool.sh -xx ~/scripts        # all 4 distros (12 files)
+./linuxlivetool.sh -xx arch ~/scripts   # arch only
                                        #   (arch | alpine | ubuntu | debian | all)
 ```
 
@@ -388,23 +388,23 @@ back into the bundle via `-r` — that only applies to the tool files from `-x`.
 
 ### Updating tools — the `-r` workflow
 
-The four tools are **embedded** — you never have to touch `live-toolbox.sh`
+The four tools are **embedded** — you never have to touch `linuxlivetool.sh`
 directly to change them. The safe path:
 
 ```shell
-./live-toolbox.sh -x  ~/tools     # 1. extract all 4 tools (flat)
+./linuxlivetool.sh -x  ~/tools     # 1. extract all 4 tools (flat)
 
 #  2. edit the tool(s) in ~/tools and test them standalone FIRST,
 #     e.g.:  ./ubuntulive-tool part
 
-./live-toolbox.sh -r  ~/tools     # 3. re-embed your changes
+./linuxlivetool.sh -r  ~/tools     # 3. re-embed your changes
 ```
 
 **What `-r` does exactly:**
 
 - compares each extracted tool against the embedded version and re-embeds
   **only the tools that actually changed** — everything untouched stays as is
-- **creates a backup automatically first** (`live-toolbox.sh.bak`) — you can
+- **creates a backup automatically first** (`linuxlivetool.sh.bak`) — you can
   always go back one step
 - bumps the **VERSION by 0.1** (with rollover: 1.9 → 2.0) so the version
   tells you which state you are on — `-v` shows all tool versions live
