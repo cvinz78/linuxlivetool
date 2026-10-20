@@ -50,7 +50,6 @@ chmod +x linuxlivetool.sh
   3) Debian
   4) Ubuntu
   5) Clonie
-  0)  Beenden
   00) Beenden
 ```
 
@@ -337,7 +336,6 @@ chmod +x linuxlivetool.sh
   3) Debian
   4) Ubuntu
   5) Clonie
-  0)  Quit
   00) Quit
 ```
 

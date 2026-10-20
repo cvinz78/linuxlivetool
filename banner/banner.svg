@@ -44,7 +44,6 @@
   <text x="730" y="317" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  3) Debian</text>
   <text x="730" y="353" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  4) Ubuntu</text>
   <text x="730" y="389" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  5) Clonie</text>
-  <text x="730" y="425" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  0)  Beenden</text>
-  <text x="730" y="461" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  00) Beenden</text>
-  <text x="730" y="505" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#e6e6e6">&gt; Auswahl: <tspan fill="#5fff87">█</tspan></text>
+  <text x="730" y="425" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  00) Beenden</text>
+  <text x="730" y="497" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#e6e6e6">&gt; Auswahl: <tspan fill="#5fff87">█</tspan></text>
 </svg>

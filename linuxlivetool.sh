@@ -94,8 +94,6 @@ t() {
     e_unknown:*)  printf 'Unbekannte Option: %s' "$1" ;;
     m_title:EN) printf '  linuxlivetool v%s - live tools collection script (+ clonie)' "$1" ;;
     m_title:*)  printf '  linuxlivetool v%s - Live-Tools Sammel-Skript (+ clonie)' "$1" ;;
-    m_0:EN)  printf '%s\n' "  0)  Quit" ;;
-    m_0:*)   printf '%s\n' "  0)  Beenden" ;;
     m_00:EN) printf '%s\n' "  00) Quit" ;;
     m_00:*)  printf '%s\n' "  00) Beenden" ;;
     m_root:EN) printf 'Requesting root privileges (sudo)... one prompt covers all tools (sudo asks for the login password of %s, not the root password)\n' "$1" ;;
@@ -114,8 +112,8 @@ t() {
     m_vcheck_prompt:*)  printf '%s' "Bestaetigen (j/N): " ;;
     m_vcheck_type:EN) printf '%s' "Password (VISIBLE - shown on screen): " ;;
     m_vcheck_type:*)  printf '%s' "Passwort (SICHTBAR - erscheint auf dem Bildschirm): " ;;
-    m_prompt:EN) printf '%s> Choice (1-%d, 0): %s' "$CYAN_H" "$1" "$RESET" ;;
-    m_prompt:*)  printf '%s> Auswahl (1-%d, 0): %s' "$CYAN_H" "$1" "$RESET" ;;
+    m_prompt:EN) printf '%s> Choice (1-%d, 00): %s' "$CYAN_H" "$1" "$RESET" ;;
+    m_prompt:*)  printf '%s> Auswahl (1-%d, 00): %s' "$CYAN_H" "$1" "$RESET" ;;
     e_input:EN) printf '%s\n' "Invalid input." ;;
     e_input:*)  printf '%s\n' "Ungültige Eingabe." ;;
     e_choice:EN) printf '%s\n' "Invalid choice." ;;
@@ -621,7 +619,6 @@ main_menu() {
         for i in "${!DIST_ORDER[@]}"; do
             txt "  $((i + 1))) ${DIST_ORDER[i]^}"
         done
-        txt "$(t m_0)"
         txt "$(t m_00)"
         read -r -p "$(t m_prompt "${#DIST_ORDER[@]}")" choice || exit 0
         case "$choice" in
