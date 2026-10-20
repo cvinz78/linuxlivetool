@@ -22,12 +22,12 @@
 
   <!-- Titelblock links -->
   <text x="70" y="200" font-family="DejaVu Sans Mono, monospace" font-size="20" fill="#5fff87">~/Projekt $</text>
-  <text x="290" y="200" font-family="DejaVu Sans Mono, monospace" font-size="20" fill="#e6e6e6">./live-toolbox.sh</text>
+  <text x="290" y="200" font-family="DejaVu Sans Mono, monospace" font-size="20" fill="#e6e6e6">./linuxlivetool.sh</text>
   <text x="70" y="285" font-family="DejaVu Sans Mono, monospace" font-weight="bold" font-size="72" fill="#00d7ff">LinuxLiveTool</text>
   <text x="70" y="330" font-family="DejaVu Sans Mono, monospace" font-weight="bold" font-size="30" fill="#ff87d7">(LLT)</text>
   <rect x="70" y="360" width="420" height="4" fill="url(#accent)"/>
-  <text x="70" y="410" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">Live-ISO · Installation · Partitionierer</text>
-  <text x="70" y="450" font-family="DejaVu Sans Mono, monospace" font-size="26" fill="#87ff5f">4 Distributionen — 1 Skript</text>
+  <text x="70" y="410" font-family="DejaVu Sans Mono, monospace" font-size="20" fill="#ffd75f">Live-ISO · Installation · Partitionierer · Klonen</text>
+  <text x="70" y="450" font-family="DejaVu Sans Mono, monospace" font-size="26" fill="#87ff5f">4 Live-Tools + Clonie — 1 Skript</text>
   <text x="70" y="560" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#ff87d7">GPL-3.0-or-later</text>
   <text x="330" y="560" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#8a99b5">reine Shell-Scripte · kein Setup nötig</text>
 
@@ -37,13 +37,14 @@
   <circle cx="730" cy="132" r="8" fill="#ff5f56"/>
   <circle cx="756" cy="132" r="8" fill="#ffbd2e"/>
   <circle cx="782" cy="132" r="8" fill="#27c93f"/>
-  <text x="860" y="139" font-family="DejaVu Sans Mono, monospace" font-size="18" fill="#8a99b5">live-toolbox v2.5</text>
+  <text x="856" y="139" font-family="DejaVu Sans Mono, monospace" font-size="18" fill="#8a99b5">linuxlivetool v3.3</text>
   <text x="730" y="200" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#00d7ff">=== Hauptmenü ===</text>
   <text x="730" y="245" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  1) Alpine</text>
-  <text x="730" y="285" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  2) Arch</text>
-  <text x="730" y="325" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  3) Debian</text>
-  <text x="730" y="365" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  4) Ubuntu</text>
-  <text x="730" y="405" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  0)  Beenden</text>
-  <text x="730" y="445" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  00) Beenden</text>
+  <text x="730" y="281" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  2) Arch</text>
+  <text x="730" y="317" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  3) Debian</text>
+  <text x="730" y="353" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  4) Ubuntu</text>
+  <text x="730" y="389" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  5) Clonie</text>
+  <text x="730" y="425" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  0)  Beenden</text>
+  <text x="730" y="461" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ff5f56">  00) Beenden</text>
   <text x="730" y="505" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#e6e6e6">&gt; Auswahl: <tspan fill="#5fff87">█</tspan></text>
 </svg>
