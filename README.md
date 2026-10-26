@@ -11,7 +11,7 @@
 ### Was ist LinuxLiveTool?
 
 `linuxlivetool.sh` ist **ein einziges, in sich geschlossenes shell-Skript**. Es enthält die
-vier LinuxLiveTools für **Ubuntu, Debian, Arch und Alpine** — und mit **clonie** ist jetzt
+vier LinuxLiveTools für **Ubuntu, Debian, Arch und Alpine** — und mit **Clonie** ist jetzt
 ein **fünftes Tool Teil der Sammlung**: Festplatten/Partitionen **klonen, imagen, recovern**.
 
 Die vier Live-Tools können jeweils:
@@ -21,7 +21,7 @@ Die vier Live-Tools können jeweils:
 - **Festplatten/Partitionen partitionieren und formatieren** (interaktiver Partitionierer),
 - Bau-Artefakte **aufräumen** und mögliche **Installationsziele anzeigen**.
 
-**clonie** (ebenfalls als Datenblock eingebettet) ergänzt die Sammlung um:
+**Clonie** (ebenfalls als Datenblock eingebettet) ergänzt die Sammlung um:
 
 - Festplatten/Partitionen **1:1 klonen** (Disk-zu-Disk),
 - **Images erstellen** (zstd multithreaded, xz/gzip-Fallback) und inkl.
@@ -29,7 +29,7 @@ Die vier Live-Tools können jeweils:
   Multi-Partitions-Images sind restorbar,
 - optional **verschlüsselte Images** (AES-256) und Partitionstabellen
   sichern/zurückspielen (Details im Abschnitt
-  [clonie — klonen, imagen, recovern](#clonie--klonen-imagen-recovern)).
+  [Clonie — klonen, imagen, recovern](#clonie--klonen-imagen-recovern)).
 
 Das Skript muss nicht installiert werden: herunterladen, ausführbar machen, starten.
 Alle **fünf** Tools stecken als Datenblock im Skript selbst und werden bei Bedarf
@@ -53,7 +53,7 @@ chmod +x linuxlivetool.sh
   00) Beenden
 ```
 
-Jede Distribution enthält genau ein Live-Tool; **clonie** startet als
+Jede Distribution enthält genau ein Live-Tool; **Clonie** startet als
 eigenständiges Tool. Die Auswahl startet das gewählte Tool **direkt**.
 Im Tool-Menü gilt überall:
 
@@ -83,9 +83,9 @@ Besonderheiten:
 - **Eigene Tools einpflegen:** mit `-x` entpacken, ändern, mit `-r` wieder
   einbetten — Details im Abschnitt [Tools aktualisieren](#tools-aktualisieren--der--r-workflow).
 
-### clonie — klonen, imagen, recovern
+### Clonie — klonen, imagen, recovern
 
-**clonie** ist mit dieser Version **Teil der Tool-Sammlung**. Es ist **kein
+**Clonie** ist mit dieser Version **Teil der Tool-Sammlung**. Es ist **kein
 Live-Tool** (baut keine ISO, installiert kein System), sondern ein eigenständiges
 Werkzeug für Festplatten und Partitionen:
 
@@ -139,7 +139,7 @@ Jedes Live-Tool ist auch **einzeln lauffähig** und bietet dieselbe Extraktion:
 ./alpinelive-tool  -x <verz>   # schreibt mkalpe-live.sh, alpe-install.sh, alpe-part
 ```
 
-**clonie** läuft ebenfalls einzeln (`./clonie`), hat als eigenständiges
+**Clonie** läuft ebenfalls einzeln (`./clonie`), hat als eigenständiges
 Einzelskript aber keine Export-Funktion.
 
 ### Tools extrahieren — `-x`
@@ -269,7 +269,7 @@ den Funktionen **ISO bauen**, **installieren** und **partitionieren** (beim
 Alpine-Tool: `mkalpe-live.sh`, `alpe-install.sh`, `alpe-part`). Die drei
 Einzelskripte lassen sich mit `-xx` exportieren und laufen dann eigenständig.
 
-**clonie** ist die Ausnahme: ein einzelnes, fertiges Skript ohne Unter-Skripte
+**Clonie** ist die Ausnahme: ein einzelnes, fertiges Skript ohne Unter-Skripte
 — mit `-x` wird es 1:1 als eine Datei entpackt.
 
 Die fünf Tools liegen zwischen Marker-Zeilen im Skript
@@ -286,7 +286,7 @@ Lizenz-Hinweis steht im Kopf des Skripts.
 ### Hinweis
 
 Nutzung auf eigene Verantwortung — das Partitionierer- und
-Installations-Tool ebenso wie **clonie** schreiben auf Festplatten!
+Installations-Tool ebenso wie **Clonie** schreiben auf Festplatten!
 
 ---
 
@@ -297,7 +297,7 @@ Installations-Tool ebenso wie **clonie** schreiben auf Festplatten!
 
 `linuxlivetool.sh` is **a single, self-contained shell script**. It contains the
 four LinuxLiveTools for **Ubuntu, Debian, Arch and Alpine** — and with
-**clonie**, a **fifth tool is now part of the collection**: clone, image and
+**Clonie**, a **fifth tool is now part of the collection**: clone, image and
 recover disks/partitions.
 
 The four live tools can each:
@@ -308,14 +308,14 @@ The four live tools can each:
 - **partition and format disks/partitions** (interactive partitioner),
 - **clean up** build artifacts and **show possible installation targets**.
 
-**clonie** (also embedded as a data block) adds to the collection:
+**Clonie** (also embedded as a data block) adds to the collection:
 
 - **1:1 cloning** of disks/partitions (disk-to-disk),
 - **image creation** (zstd multithreaded, xz/gzip fallback) and restore with a
   **SHA-256 check** — single partitions can be restored from multi-partition
   images,
 - optional **encrypted images** (AES-256) plus saving/restoring partition
-  tables (details in [clonie — clone, image and recover](#clonie--clone-image-and-recover)).
+  tables (details in [Clonie — clone, image and recover](#clonie--clone-image-and-recover)).
 
 No installation required: download, make executable, run. All **five** tools are
 embedded inside the script itself as a data block and are extracted and executed
@@ -339,7 +339,7 @@ chmod +x linuxlivetool.sh
   00) Quit
 ```
 
-Each distribution contains exactly one live tool; **clonie** starts as a
+Each distribution contains exactly one live tool; **Clonie** starts as a
 standalone tool. Selecting an entry starts that tool **directly**. Inside the
 tool menus, everywhere:
 
@@ -369,9 +369,9 @@ Details:
 - **Update your own tools:** extract with `-x`, modify, re-embed with `-r` —
   details in [Updating tools](#updating-tools--the--r-workflow).
 
-### clonie — clone, image and recover
+### Clonie — clone, image and recover
 
-**clonie** is **part of the tool collection** as of this version. It is **not a
+**Clonie** is **part of the tool collection** as of this version. It is **not a
 live tool** (it builds no ISO and installs no system) but a standalone utility
 for disks and partitions:
 
@@ -424,7 +424,7 @@ Every live tool also runs **standalone** and offers the same extraction:
 ./alpinelive-tool  -x <dir>   # writes mkalpe-live.sh, alpe-install.sh, alpe-part
 ```
 
-**clonie** also runs standalone (`./clonie`) but, being a single standalone
+**Clonie** also runs standalone (`./clonie`) but, being a single standalone
 script, has no export function.
 
 ### Extracting tools — `-x`
@@ -550,7 +550,7 @@ for its distribution**: it consists of **three scripts** with the functions
 `mkalpe-live.sh`, `alpe-install.sh`, `alpe-part`). These three standalone
 scripts can be exported with `-xx` and then run independently.
 
-**clonie** is the exception: a single, finished script without sub-scripts —
+**Clonie** is the exception: a single, finished script without sub-scripts —
 `-x` extracts it 1:1 as one file.
 
 The five tools sit between marker lines inside the script
@@ -566,4 +566,4 @@ the top of the script.
 ### Note
 
 Use at your own risk — the partitioner and installer tools as well as
-**clonie** write to disks!
+**Clonie** write to disks!
