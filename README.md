@@ -111,11 +111,11 @@ Werkzeug für Festplatten und Partitionen:
 ```shell
 ./linuxlivetool.sh                       # interaktives Menü (Standard: Deutsch)
 
-./linuxlivetool.sh -x  <verzeichnis>     # alle 5 Tools flach entpacken (4 Live-Tools + clonie)
-./linuxlivetool.sh -xx <verzeichnis>     # die 12 Einzelskripte der 4 Live-Tools + clonie entpacken
+./linuxlivetool.sh -x  <verzeichnis>     # alle 5 Tools einfach entpacken (4 Live-Tools + Clonie)
+./linuxlivetool.sh -xx <verzeichnis>     # die 12 Einzelskripte der 4 Live-Tools + Clonie entpacken
 ./linuxlivetool.sh -xx arch <verzeichnis># nur die Einzelskripte eines Tools
                                         #   (arch | alpine | ubuntu | debian | clonie | all)
-                                        #   (clonie: eine Datei, keine Export-Aufteilung)
+                                        #   (Clonie: eine Datei, keine Export-Aufteilung)
 ./linuxlivetool.sh -r  <verzeichnis>     # veraenderte Tools aus -x/-xx wieder einbetten
                                         #   (VERSION wird um 0.1 erhöht, Backup .bak)
 ./linuxlivetool.sh -v                    # Version + Versionen aller enthaltenen Tools
@@ -130,7 +130,10 @@ Was `-x`, `-xx` und `-r` im Detail machen: eigene Abschnitte direkt unterhalb.
 Verzeichnisse werden bei Bedarf automatisch angelegt. Bei `-r` bleiben unveränderte
 Tools unberührt; nur tatsächlich geänderte werden ersetzt.
 
-Jedes Live-Tool ist auch **einzeln lauffähig** und bietet dieselbe Extraktion:
+Hast du die Live-Tools mit `-x` entpackt, kannst du auch aus den entpackten
+Tools (Arch, Alpine, Debian, Ubuntu) die darin enthaltenen Einzelskripte
+entpacken — jedes Live-Tool ist einzeln lauffähig und bietet dieselbe
+Extraktion:
 
 ```shell
 ./ubuntulive-tool  -x <verz>   # oder: export -s 1,2,3 -o <verz>
@@ -144,9 +147,9 @@ Einzelskript aber keine Export-Funktion.
 
 ### Tools extrahieren — `-x`
 
-Holt die **fünf eingebetteten Tools** aus dem Bündel heraus — **flach** in ein
-Zielverzeichnis (wird bei Bedarf automatisch angelegt), **byte-identisch** und
-ausführbar:
+Holt die **fünf eingebetteten Tools** aus dem Bündel heraus — **einfach** in
+ein Zielverzeichnis (wird bei Bedarf automatisch angelegt), **byte-identisch**
+und ausführbar:
 
 ```shell
 ./linuxlivetool.sh -x ~/tools
@@ -173,7 +176,7 @@ selbst. Mit `-xx` werden sie über die eingebaute Export-Funktion als
 **eigenständige, separat lauffähige Skripte** geschrieben:
 
 ```shell
-./linuxlivetool.sh -xx ~/skripte        # alle 4 Live-Tools + clonie (13 Dateien)
+./linuxlivetool.sh -xx ~/skripte        # alle 4 Live-Tools + Clonie (13 Dateien)
 ./linuxlivetool.sh -xx arch ~/skripte   # nur arch
                                        #   (arch | alpine | ubuntu | debian | clonie | all)
 ```
@@ -200,7 +203,7 @@ Alle fünf Tools sind **eingebettet** — zum Ändern musst du `linuxlivetool.sh
 nie direkt anfassen. Der sichere Weg:
 
 ```shell
-./linuxlivetool.sh -x  ~/tools     # 1. alle 5 Tools entpacken (flach)
+./linuxlivetool.sh -x  ~/tools     # 1. alle 5 Tools entpacken (einfach)
 
 #  2. Tool(s) in ~/tools bearbeiten und VORHER einzeln testen,
 #     z. B.:  ./ubuntulive-tool part
@@ -396,11 +399,11 @@ for disks and partitions:
 ```shell
 ./linuxlivetool.sh                       # interactive menu (default: German)
 
-./linuxlivetool.sh -x  <directory>       # extract all 5 tools, flat (4 live tools + clonie)
-./linuxlivetool.sh -xx <directory>       # extract the 12 standalone scripts of the 4 live tools + clonie
+./linuxlivetool.sh -x  <directory>       # extract all 5 tools (4 live tools + Clonie)
+./linuxlivetool.sh -xx <directory>       # extract the 12 standalone scripts of the 4 live tools + Clonie
 ./linuxlivetool.sh -xx arch <directory>  # only the standalone scripts of one tool
                                         #   (arch | alpine | ubuntu | debian | clonie | all)
-                                        #   (clonie: one file, no export split)
+                                        #   (Clonie: one file, no export split)
 ./linuxlivetool.sh -r  <directory>       # re-embed modified tools from -x/-xx
                                         #   (VERSION is bumped by 0.1, backup .bak)
 ./linuxlivetool.sh -v                    # version + versions of all embedded tools
@@ -415,7 +418,9 @@ What `-x`, `-xx` and `-r` do in detail: dedicated sections right below.
 Directories are created automatically if missing. With `-r`, unchanged tools are
 left untouched; only actually changed ones are replaced.
 
-Every live tool also runs **standalone** and offers the same extraction:
+Once you have extracted the live tools with `-x`, the extracted tools (Arch,
+Alpine, Debian, Ubuntu) can also extract the scripts they contain — every live
+tool runs standalone and offers the same extraction:
 
 ```shell
 ./ubuntulive-tool  -x <dir>   # or: export -s 1,2,3 -o <dir>
@@ -429,8 +434,8 @@ script, has no export function.
 
 ### Extracting tools — `-x`
 
-Pulls the **five embedded tools** out of the bundle — **flat** into a target
-directory (created automatically if missing), **byte-identical** and
+Pulls the **five embedded tools** out of the bundle — **directly** into a
+target directory (created automatically if missing), **byte-identical** and
 executable:
 
 ```shell
@@ -458,7 +463,7 @@ partitioner) internally. With `-xx` they are written out via the built-in
 export function as **independent, separately runnable scripts**:
 
 ```shell
-./linuxlivetool.sh -xx ~/scripts        # all 4 live tools + clonie (13 files)
+./linuxlivetool.sh -xx ~/scripts        # all 4 live tools + Clonie (13 files)
 ./linuxlivetool.sh -xx arch ~/scripts   # arch only
                                        #   (arch | alpine | ubuntu | debian | clonie | all)
 ```
@@ -484,7 +489,7 @@ All five tools are **embedded** — you never have to touch `linuxlivetool.sh`
 directly to change them. The safe path:
 
 ```shell
-./linuxlivetool.sh -x  ~/tools     # 1. extract all 5 tools (flat)
+./linuxlivetool.sh -x  ~/tools     # 1. extract all 5 tools (directly)
 
 #  2. edit the tool(s) in ~/tools and test them standalone FIRST,
 #     e.g.:  ./ubuntulive-tool part
