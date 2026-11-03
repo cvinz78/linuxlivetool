@@ -49,7 +49,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-TOOLBOX_VERSION="3.3"
+TOOLBOX_VERSION="4.3"
 
 MARK_S='#@@@SCRIPT:'
 MARK_E='#@@@END:'
@@ -685,7 +685,7 @@ exit 0
 #@@@SCRIPT:ubuntu/ubuntulive-tool@@@
 #!/usr/bin/env bash
 #
-# ubuntulive-tool 2.6 - Ubuntu-Live-ISO bauen + gebootetes Live-System installieren
+# ubuntulive-tool 3.4 - Ubuntu-Live-ISO bauen + gebootetes Live-System installieren
 #                       + interaktiver Partitionierer (sfdisk-Basis)
 #
 # Zweck:
@@ -4526,9 +4526,7 @@ do_iso_build() {
     if [[ -z "$live_benutzer" ]]; then
         live_benutzer="$(awk -F: '$3 >= 1000 && $3 < 65534 { if (!min || $3 < min) { min = $3; u = $1 } } END { print u }' /etc/passwd 2>/dev/null || true)"
     fi
-    if [[ -n "$live_benutzer" ]]; then
-        txt "$(t iso_live_autologin_user "$live_benutzer")"
-    else
+    if [[ -z "$live_benutzer" ]]; then
         warn "$(t warn_iso_no_live_user)"
     fi
 
@@ -4547,14 +4545,29 @@ do_iso_build() {
     # schlägt der Live-Autologin fehl und es bleibt nur der Passwort-
     # Login. Die .desktop-Endung wird NUR zur Existenzprüfung ergänzt.
     local dm_name=""
-    local dm_read
-    dm_read="$(cat /etc/X11/default-display-manager 2>/dev/null || true)"
-    case "$dm_read" in
-        *lightdm) dm_name="LightDM" ;;
-        *sddm)    dm_name="SDDM" ;;
-        *gdm3)    dm_name="GDM" ;;
+    local dm_link
+    # 1) Die aktive Wahl: der display-manager.service-Alias zeigt auf die
+    #    Einheit des WIRKLICH laufenden DM. /etc/X11/default-display-manager
+    #    wird beim Nachinstallieren eines anderen DM (z. B. sddm neben dem
+    #    Debian-XFCE-LightDM) naemlich nicht aktualisiert und luegt dann.
+    dm_link="$(readlink /etc/systemd/system/display-manager.service 2>/dev/null || true)"
+    case "$dm_link" in
+        *sddm.service)              dm_name="SDDM" ;;
+        *lightdm.service)           dm_name="LightDM" ;;
+        *gdm3.service|*gdm.service) dm_name="GDM" ;;
     esac
     if [[ -z "$dm_name" ]]; then
+        # 2) klassische Debian-Angabe
+        local dm_read
+        dm_read="$(cat /etc/X11/default-display-manager 2>/dev/null || true)"
+        case "$dm_read" in
+            *lightdm) dm_name="LightDM" ;;
+            *sddm)    dm_name="SDDM" ;;
+            *gdm3)    dm_name="GDM" ;;
+        esac
+    fi
+    if [[ -z "$dm_name" ]]; then
+        # 3) letzter Fallback: installierte Binaries
         if [[ -e /usr/sbin/lightdm ]]; then
             dm_name="LightDM"
         elif [[ -e /usr/bin/sddm ]]; then
@@ -4635,11 +4648,6 @@ do_iso_build() {
             fi
         fi
         sddm_session="${sess_kandidat%.desktop}"
-        if [[ -n "$sddm_session" ]]; then
-            txt "$(t iso_dm_session "$dm_name" "$sddm_session")"
-        else
-            warn "$(t warn_iso_no_dm_session "$dm_name")"
-        fi
     fi
 
     local confdir="$WORK/initramfs-live-conf"
@@ -4932,11 +4940,17 @@ ALSTUB
         esac
     fi
 
-    local -a excl=( "proc/*" "sys/*" "dev/*" "run/*" "tmp/*" "mnt/*" "media/*"
-        "var/tmp/*" "var/log/*" "var/crash/*" "var/lib/systemd/coredump/*"
-        "var/cache/apt/archives/*" "var/lib/apt/lists/*"
+    # WICHTIG: mksquashfs matchet "X/*" NICHT gegen Punkt-Dateien (.X11-unix
+    # & Co.) - deshalb steht jedes Inhalts-Muster doppelt ("X/*" + "X/.*").
+    # apt-Cache GANZ raus (pkgcache.bin alleine 100-300 MB), swap in allen
+    # ueblichen Varianten raus.
+    local -a excl=( "proc/*" "proc/.*" "sys/*" "sys/.*" "dev/*" "dev/.*" "run/*" "run/.*"
+        "tmp/*" "tmp/.*" "mnt/*" "mnt/.*" "media/*" "media/.*"
+        "var/tmp/*" "var/tmp/.*" "var/log/*" "var/log/.*" "var/crash/*" "var/crash/.*"
+        "var/lib/systemd/coredump/*" "var/lib/systemd/coredump/.*"
+        "var/cache/apt/*" "var/cache/apt/.*" "var/lib/apt/lists/*" "var/lib/apt/lists/.*"
         "var/lib/systemd/random-seed"
-        "lost+found" "cdrom" "swapfile" "swap.img" )
+        "lost+found" "cdrom" "swapfile*" "swap.img" "swap/*" )
 
     local work_rel="${WORK#/}"
     if [[ -n "$work_rel" ]]; then
@@ -6039,7 +6053,7 @@ fi
 #@@@SCRIPT:debian/debianlive-tool@@@
 #!/usr/bin/env bash
 #
-# debianlive-tool 1.2 - Debian-Live-ISO bauen + gebootetes Live-System
+# debianlive-tool 1.5 - Debian-Live-ISO bauen + gebootetes Live-System
 # installieren (Debian-Fork von debianlive-tool 3.1: live-boot wurde durch
 # live-boot/live-config/live-tools ersetzt - Kernel-Parameter boot=live,
 # ISO-Ordner /live/, Live-Autologin ueber live-config-Boot-Parameter)
@@ -9888,9 +9902,7 @@ do_iso_build() {
     if [[ -z "$live_benutzer" ]]; then
         live_benutzer="$(awk -F: '$3 >= 1000 && $3 < 65534 { if (!min || $3 < min) { min = $3; u = $1 } } END { print u }' /etc/passwd 2>/dev/null || true)"
     fi
-    if [[ -n "$live_benutzer" ]]; then
-        txt "$(t iso_live_autologin_user "$live_benutzer")"
-    else
+    if [[ -z "$live_benutzer" ]]; then
         warn "$(t warn_iso_no_live_user)"
     fi
 
@@ -9909,14 +9921,29 @@ do_iso_build() {
     # schlägt der Live-Autologin fehl und es bleibt nur der Passwort-
     # Login. Die .desktop-Endung wird NUR zur Existenzprüfung ergänzt.
     local dm_name=""
-    local dm_read
-    dm_read="$(cat /etc/X11/default-display-manager 2>/dev/null || true)"
-    case "$dm_read" in
-        *lightdm) dm_name="LightDM" ;;
-        *sddm)    dm_name="SDDM" ;;
-        *gdm3)    dm_name="GDM" ;;
+    local dm_link
+    # 1) Die aktive Wahl: der display-manager.service-Alias zeigt auf die
+    #    Einheit des WIRKLICH laufenden DM. /etc/X11/default-display-manager
+    #    wird beim Nachinstallieren eines anderen DM (z. B. sddm neben dem
+    #    Debian-XFCE-LightDM) naemlich nicht aktualisiert und luegt dann.
+    dm_link="$(readlink /etc/systemd/system/display-manager.service 2>/dev/null || true)"
+    case "$dm_link" in
+        *sddm.service)              dm_name="SDDM" ;;
+        *lightdm.service)           dm_name="LightDM" ;;
+        *gdm3.service|*gdm.service) dm_name="GDM" ;;
     esac
     if [[ -z "$dm_name" ]]; then
+        # 2) klassische Debian-Angabe
+        local dm_read
+        dm_read="$(cat /etc/X11/default-display-manager 2>/dev/null || true)"
+        case "$dm_read" in
+            *lightdm) dm_name="LightDM" ;;
+            *sddm)    dm_name="SDDM" ;;
+            *gdm3)    dm_name="GDM" ;;
+        esac
+    fi
+    if [[ -z "$dm_name" ]]; then
+        # 3) letzter Fallback: installierte Binaries
         if [[ -e /usr/sbin/lightdm ]]; then
             dm_name="LightDM"
         elif [[ -e /usr/bin/sddm ]]; then
@@ -9997,11 +10024,6 @@ do_iso_build() {
             fi
         fi
         sddm_session="${sess_kandidat%.desktop}"
-        if [[ -n "$sddm_session" ]]; then
-            txt "$(t iso_dm_session "$dm_name" "$sddm_session")"
-        else
-            warn "$(t warn_iso_no_dm_session "$dm_name")"
-        fi
     fi
 
     local confdir="$WORK/initramfs-live-conf"
@@ -10300,11 +10322,17 @@ ALSTUB
         esac
     fi
 
-    local -a excl=( "proc/*" "sys/*" "dev/*" "run/*" "tmp/*" "mnt/*" "media/*"
-        "var/tmp/*" "var/log/*" "var/crash/*" "var/lib/systemd/coredump/*"
-        "var/cache/apt/archives/*" "var/lib/apt/lists/*"
+    # WICHTIG: mksquashfs matchet "X/*" NICHT gegen Punkt-Dateien (.X11-unix
+    # & Co.) - deshalb steht jedes Inhalts-Muster doppelt ("X/*" + "X/.*").
+    # apt-Cache GANZ raus (pkgcache.bin alleine 100-300 MB), swap in allen
+    # ueblichen Varianten raus.
+    local -a excl=( "proc/*" "proc/.*" "sys/*" "sys/.*" "dev/*" "dev/.*" "run/*" "run/.*"
+        "tmp/*" "tmp/.*" "mnt/*" "mnt/.*" "media/*" "media/.*"
+        "var/tmp/*" "var/tmp/.*" "var/log/*" "var/log/.*" "var/crash/*" "var/crash/.*"
+        "var/lib/systemd/coredump/*" "var/lib/systemd/coredump/.*"
+        "var/cache/apt/*" "var/cache/apt/.*" "var/lib/apt/lists/*" "var/lib/apt/lists/.*"
         "var/lib/systemd/random-seed"
-        "lost+found" "cdrom" "swapfile" "swap.img" )
+        "lost+found" "cdrom" "swapfile*" "swap.img" "swap/*" )
 
     local work_rel="${WORK#/}"
     if [[ -n "$work_rel" ]]; then
@@ -10426,7 +10454,7 @@ iso_interactive() {
     ask_string "$(t word_workdir)" "$(invoking_home)/remastern" || return 0
     WORK="$ANSWER"
 
-    ask_string "$(t q_iso_label)" "UBUNTULIVE" || return 0
+    ask_string "$(t q_iso_label)" "DEBIANLIVE" || return 0
     ISO_LABEL="$ANSWER"
 
     choose_squash_comp || return 0
@@ -11022,7 +11050,7 @@ ${C_MISC}  Creates a bootable live ISO of the RUNNING system (root,
   Options:
     ${C_FILE}-w, --work DIR${C_OFF}        ${C_MISC}work directory [default: ~/remastern]
     ${C_FILE}-o, --output PATH${C_OFF}     ${C_MISC}target path/directory of the ISO (like TARGET)
-    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}volume label [default: UBUNTULIVE]
+    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}volume label [default: DEBIANLIVE]
     ${C_FILE}-c, --compression ALGO${C_OFF} ${C_MISC}squashfs compression [default: zstd]
     ${C_FILE}-e, --exclude PATHS${C_OFF}   ${C_MISC}exclude additionally (space separated)
 
@@ -11098,7 +11126,7 @@ ${C_MISC}  Erstellt eine bootbare Live-ISO des LAUFENDEN Systems (Root-Rechte,
   Optionen:
     ${C_FILE}-w, --work VERZ${C_OFF}       ${C_MISC}Arbeitsverzeichnis [Standard: ~/remastern]
     ${C_FILE}-o, --output PFAD${C_OFF}     ${C_MISC}Zielpfad/Verzeichnis der ISO (wie ZIEL)
-    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}Volume-Label [Standard: UBUNTULIVE]
+    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}Volume-Label [Standard: DEBIANLIVE]
     ${C_FILE}-c, --compression ALGO${C_OFF} ${C_MISC}SquashFS-Kompression [Standard: zstd]
     ${C_FILE}-e, --exclude PFADE${C_OFF}   ${C_MISC}zusätzlich ausschließen (leerzeichengetrennt)
 
@@ -11191,7 +11219,7 @@ ${C_MISC}TARGET                  Target path of the ISO: file (ends in ${C_FILE}
 Options:
   ${C_FILE}-w, --work DIR${C_OFF}        ${C_MISC}work directory for the build [default: ~/remastern]
   ${C_FILE}-o, --output PATH${C_OFF}     ${C_MISC}target path/directory of the ISO (like TARGET)
-    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}volume label of the ISO [default: UBUNTULIVE]
+    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}volume label of the ISO [default: DEBIANLIVE]
                         (max. 32 characters, A-Z 0-9 . _ -)
     ${C_FILE}-c, --compression ALGO${C_OFF} ${C_MISC}squashfs compression: xz, zstd, lzma,
                         gzip, lzo, lz4 [default: zstd, configurable in the
@@ -11220,7 +11248,7 @@ ${C_MISC}ZIEL                    Zielpfad der ISO: Datei (endet auf ${C_FILE}.is
 Optionen:
   ${C_FILE}-w, --work VERZ${C_OFF}       ${C_MISC}Arbeitsverzeichnis für den Bau [Standard: ~/remastern]
   ${C_FILE}-o, --output PFAD${C_OFF}     ${C_MISC}Zielpfad/Verzeichnis der ISO (wie ZIEL)
-    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}Volume-Label der ISO [Standard: UBUNTULIVE]
+    ${C_FILE}-l, --label LABEL${C_OFF}     ${C_MISC}Volume-Label der ISO [Standard: DEBIANLIVE]
                         (max. 32 Zeichen, A-Z 0-9 . _ -)
     ${C_FILE}-c, --compression ALGO${C_OFF} ${C_MISC}SquashFS-Kompression: xz, zstd, lzma,
                         gzip, lzo, lz4 [Standard: zstd, im Script einstellbar
@@ -11407,7 +11435,7 @@ fi
 #@@@SCRIPT:arch/archlive-tool@@@
 #!/usr/bin/env bash
 #
-# archlive-tool 2.0 - Live-ISO bauen + gebootetes Live-System installieren
+# archlive-tool 3.3 - Live-ISO bauen + gebootetes Live-System installieren
 #                     + interaktiver Partitionierer (sfdisk-Basis)
 #
 # Zweck:
@@ -11447,7 +11475,7 @@ fi
 #
 set -euo pipefail
 
-VERSION="3.2"
+VERSION="3.3"
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar);
 # per Umgebungsvariablen ueberschreibbar.
 SCRIPT_NAME="${ARCHLIVE_SELF_NAME:-$(basename -- "$0")}"
@@ -11523,8 +11551,6 @@ t() {
         warn_tool_missing_aborted:*) printf 'Warnung: %s abgebrochen - %s fehlt weiterhin.\n'  "$1" "$2" ;;
         info_installing_pkg:EN) printf 'Installing package %s (network required)...\n'  "$1" ;;
         info_installing_pkg:*) printf 'Installiere Paket %s (Netzwerk nötig)...\n'  "$1" ;;
-        info_pacman_retry:EN) printf '%s\n' "Retrying with 'pacman -Sy' (refreshing the package database)..." ;;
-        info_pacman_retry:*)  printf '%s\n' "Neuer Versuch mit 'pacman -Sy' (Paketdatenbank auffrischen)..." ;;
         err_tool_install_failed:EN) printf 'ERROR: Could not install %s (package %s).\n'  "$1" "$2" ;;
         err_tool_install_failed:*) printf 'FEHLER: %s konnte nicht installiert werden (Paket %s).\n'  "$1" "$2" ;;
         err_tool_install_failed2:EN) printf '%s\n' "ERROR: Could not install %s (package %s).
@@ -12791,12 +12817,9 @@ ensure_tool() {
     fi
 
     misc "$(t info_installing_pkg "$pkg")"
-    if ! pacman -S --needed --noconfirm "$pkg" >/dev/null 2>&1; then
-        misc "$(t info_pacman_retry)"
-        if ! pacman -Sy --needed --noconfirm "$pkg" >/dev/null 2>&1; then
-            err "$(t err_tool_install_failed2 "$tool" "$pkg")"
-            return 1
-        fi
+    if ! pacman -Sy --noconfirm "$pkg" >/dev/null 2>&1; then
+        err "$(t err_tool_install_failed2 "$tool" "$pkg")"
+        return 1
     fi
 
     if command -v "$tool" >/dev/null 2>&1; then
@@ -14044,12 +14067,9 @@ do_install() {
 
     if [[ "${#pkgs[@]}" -gt 0 ]]; then
         txt "$(t install_info_missing_tools)"
-        misc "  pacman -S --needed --noconfirm ${pkgs[*]}"
-        if ! pacman -S --needed --noconfirm "${pkgs[@]}"; then
-            misc "$(t info_pacman_retry)"
-            pacman -Sy --needed --noconfirm "${pkgs[@]}" \
-                || die "$(t install_err_pkg_fail)"
-        fi
+        misc "  pacman -Sy --noconfirm ${pkgs[*]}"
+        pacman -Sy --noconfirm "${pkgs[@]}" \
+            || die "$(t install_err_pkg_fail)"
     fi
 
     local c
@@ -14724,29 +14744,46 @@ do_iso_build() {
     trap 'exit 143' TERM
     trap 'exit 129' HUP
 
-    # Pakete
-    local -a build_pkgs=(mkinitcpio mkinitcpio-archiso squashfs-tools libisoburn grub mtools)
+    # Pakete: DB auffrischen, dann fehlende Pakete installieren.
+    # xorriso + libisoburn: bei neueren Arch-Builds liefert erst das Paket
+    # 'xorriso' das Binary (libisoburn enthaelt nur noch die Bibliotheken).
+    local -a build_pkgs=(mkinitcpio mkinitcpio-archiso squashfs-tools xorriso libisoburn grub mtools)
     local missing
+    # pacman -T liefert ein Paket pro Zeile - mapfile (statt read) liest
+    # alle Zeilen, sonst wuerde nur das erste fehlende Paket installiert.
     missing="$(pacman -T "${build_pkgs[@]}" 2>/dev/null || true)"
     if [[ -n "$missing" ]]; then
         local -a missing_arr=()
-        read -r -a missing_arr <<< "$missing"
+        mapfile -t missing_arr <<< "$missing"
         txt "$(t iso_info_install_pkgs "${missing_arr[*]}")"
-        if ! pacman -S --needed --noconfirm "${missing_arr[@]}"; then
-            misc "$(t info_pacman_retry)"
-            pacman -Sy --needed --noconfirm "${missing_arr[@]}" \
-                || die "$(t iso_err_pkg_fail)"
-        fi
+        pacman -Sy --needed --noconfirm "${missing_arr[@]}" \
+            || die "$(t iso_err_pkg_fail)"
     fi
 
-    local t
-    for t in mksquashfs mkinitcpio grub-mkrescue xorriso; do
+    # Binaries gegenpruefen: die Paket-DB kann Pakete als installiert melden,
+    # deren Dateien fehlen (abgebrochenes Update, manuelles Loeschen) - dann
+    # hilft nur eine erzwungene Neuinstallation (ohne --needed).
+    local t t_pkg
+    for t in mksquashfs mkinitcpio grub-mkrescue xorriso mformat mcopy; do
         if ! command -v "$t" >/dev/null 2>&1; then
-            die "$(t iso_err_tool_missing "$t")"
+            case "$t" in
+                mksquashfs)    t_pkg=squashfs-tools ;;
+                mkinitcpio)    t_pkg=mkinitcpio ;;
+                grub-mkrescue) t_pkg=grub ;;
+                xorriso)       t_pkg=xorriso ;;
+                mformat|mcopy) t_pkg=mtools ;;
+            esac
+            txt "$(t iso_info_install_pkgs "$t_pkg")"
+            pacman -Sy --noconfirm "$t_pkg" || die "$(t iso_err_pkg_fail)"
+            command -v "$t" >/dev/null 2>&1 \
+                || die "$(t iso_err_tool_missing "$t")"
         fi
     done
     if [[ ! -e /usr/lib/initcpio/install/archiso || ! -e /usr/lib/initcpio/hooks/archiso ]]; then
-        die "$(t iso_err_archiso_hooks)"
+        txt "$(t iso_info_install_pkgs "mkinitcpio-archiso")"
+        pacman -Sy --noconfirm mkinitcpio-archiso || die "$(t iso_err_pkg_fail)"
+        [[ -e /usr/lib/initcpio/install/archiso && -e /usr/lib/initcpio/hooks/archiso ]] \
+            || die "$(t iso_err_archiso_hooks)"
     fi
 
     # Freiplatz prüfen (nach mkdir, damit df das Ziel kennt)
@@ -15831,7 +15868,7 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROG="$(basename -- "$0")"
-VERSION="2.4"
+VERSION="2.5"
 
 # ==================== SPRACHE / OPTIONEN ====================
 # Sprache aller eigenen Meldungen: AUTO (Systemsprache, Voreinstellung),
@@ -16105,13 +16142,11 @@ emit_mkalpe() {
 #   - SSH-Host-Schluessel und weitere /etc-Inhalte der Quelle wandern ins ISO
 #     (es ist ein Abbild des eigenen Systems).
 #   - Das Live-System bootet mit dem Repository des Boot-Mediums; die
-#     Netzwerk-Repos des Quell-Systems liegen unter
-#     /etc/apk/repositories.alpe-network und werden vom installierten
-#     System (alpe-install) automatisch gesetzt. Offline werden fehlende
+#     Netzwerk-Repos des Quell-Systems liegen nur zu Referenz unter
+#     /etc/apk/repositories.alpe-network. Offline werden fehlende
 #     HTTP-Repos nur als Warnung uebersprungen.
 #   - /usr/local des Quell-Systems wird automatisch mitgenommen (wenn es
-#     Inhalt hat). alpe-install ist optional: ohne es entsteht eine reine
-#     Live-ISO ohne Installations-Hilfe.
+#     Inhalt hat).
 #   - Muss auf einem Alpine-System gleicher Architektur ausgefuehrt werden.
 #
 # Zweisprachig (DE/EN): Alle Meldungen erscheinen in der Systemsprache.
@@ -16123,11 +16158,14 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROGRAM="$(basename -- "$0")"
-VERSION=2.3.0
+VERSION=2.5.0
 
 ALPE_ROOT="${ALPE_ROOT:-/}"
 ALPE_EXTRA_REPOS="${ALPE_EXTRA_REPOS:-}"
 ALPE_MIRROR="${ALPE_MIRROR:-https://dl-cdn.alpinelinux.org/alpine}"
+# Ersatz-Spiegel fuer den wget-Nachladefall (apk3-Client-Bug bei grossen
+# Dateien, siehe fetch-Abschnitt) - Pfadstruktur hinter /alpine/ identisch.
+ALPE_FALLBACK_MIRRORS="${ALPE_FALLBACK_MIRRORS:-https://dl-2.alpinelinux.org/alpine https://mirror.leaseweb.com/alpine https://ftp.halifax.rwth-aachen.de/alpine}"
 # BRANCH: leer = Repositories des Quell-Systems uebernehmen; sonst z. B.
 # "edge", "latest-stable" oder eine feste Version wie "3.22"
 BRANCH=""
@@ -16226,12 +16264,10 @@ t() {
 	warn_inc_missing:*) printf 'Warnung: -I %s nicht gefunden - uebersprungen\n'  "$1" ;;
 	warn_interfaces:EN) printf '%s\n' "Warning: /etc/network/interfaces refers to the source hardware." ;;
 	warn_interfaces:*)  printf '%s\n' "Warnung: Hinweis: /etc/network/interfaces bezieht sich auf die Quell-Hardware." ;;
-	warn_no_alpe_install:EN) printf '%s\n' "Warning: alpe-install not found - a pure live ISO without installation helper is created." ;;
-	warn_no_alpe_install:*)  printf '%s\n' "Warnung: alpe-install nicht gefunden - es entsteht eine reine Live-ISO ohne Installations-Hilfe." ;;
-	err_missing_tools_final:EN) printf '%s\n' "ERROR: Missing tools: %s -- please install:
-  apk add xorriso squashfs-tools syslinux grub-efi mtools abuild openssl kmod mkinitfs xz zstd" "$1" ;;
-	err_missing_tools_final:*)  printf '%s\n' "FEHLER: Fehlende Werkzeuge: %s -- bitte installieren:
-  apk add xorriso squashfs-tools syslinux grub-efi mtools abuild openssl kmod mkinitfs xz zstd" "$1" ;;
+	err_missing_tools_final:EN) printf 'ERROR: Missing tools: %s -- please install:
+  apk add xorriso squashfs-tools syslinux grub-efi mtools abuild openssl kmod mkinitfs xz zstd\n' "$1" ;;
+	err_missing_tools_final:*)  printf 'FEHLER: Fehlende Werkzeuge: %s -- bitte installieren:
+  apk add xorriso squashfs-tools syslinux grub-efi mtools abuild openssl kmod mkinitfs xz zstd\n' "$1" ;;
 	err_no_modules:EN) printf 'ERROR: No kernel modules found in %s.\n'  "$1" ;;
 	err_no_modules:*) printf 'FEHLER: Keine Kernel-Module in %s gefunden.\n'  "$1" ;;
 	err_no_kvers:EN) printf 'ERROR: No kernel versions found in %s.\n'  "$1" ;;
@@ -16272,10 +16308,20 @@ t() {
 	err_copy_kernel:*)  printf '%s\n' "FEHLER: Kopieren des Kernels fehlgeschlagen." ;;
 	err_no_world:EN) printf 'ERROR: %s not readable - not an installed apk system?\n'  "$1" ;;
 	err_no_world:*) printf 'FEHLER: %s nicht lesbar - kein installiertes apk-System?\n'  "$1" ;;
-	err_apk_update:EN) printf '%s\n' "ERROR: apk update failed (network access needed) - apk3 fetch does not re-download missing indexes by itself." ;;
-	err_apk_update:*)  printf '%s\n' "FEHLER: apk update fehlgeschlagen (Netzzugang noetig) - apk3 fetch laedt fehlende Indizes nicht selbst nach." ;;
-	err_apk_fetch:EN) printf '%s\n' "ERROR: apk fetch failed (network access to the chosen branch needed)." ;;
-	err_apk_fetch:*)  printf '%s\n' "FEHLER: apk fetch fehlgeschlagen (Netzzugang zum gewaehlten Branch noetig)." ;;
+	warn_apk_update_stale:EN) printf '%s\n' "Warning: apk update reported an error (kept the previous index) - continuing; if the fetch fails, check the diagnosis log." ;;
+	warn_apk_update_stale:*)  printf '%s\n' "Warnung: apk update meldete einen Fehler (alter Index bleibt in Benutzung) - es wird weitergemacht; schlaegt der fetch, steht alles im Diagnose-Log." ;;
+	err_apk_fetch_log:EN) printf 'ERROR: apk fetch failed - diagnosis written to: %s
+Please hand over this file when reporting the problem.\n' "$1" ;;
+	err_apk_fetch_log:*)  printf 'FEHLER: apk fetch fehlgeschlagen - Diagnose steht in: %s
+Bitte diese Datei bei der Fehlermeldung mitgeben.\n' "$1" ;;
+	info_fetch_start:EN) printf '%s\n' "Fetching packages (errors are logged; this can take a while)..." ;;
+	info_fetch_start:*)  printf '%s\n' "Lade Pakete (Fehler werden mitgeschrieben; das kann dauern)..." ;;
+	info_wget_fill:EN) printf 'Fetching %s via wget (apk3 client bug on large files)...\n'  "$1" ;;
+	info_wget_fill:*)  printf 'Lade %s per wget nach (apk3-Client-Bug bei grossen Dateien)...\n'  "$1" ;;
+	warn_wget_failed:EN) printf 'Warning: %s could not be fetched via wget (all mirrors).\n'  "$1" ;;
+	warn_wget_failed:*)  printf 'Warnung: %s auch per wget nicht beschaffbar (alle Spiegel).\n'  "$1" ;;
+	info_wget_fill_done:EN) printf 'Backfilled %s missing package(s) via wget.\n'  "$1" ;;
+	info_wget_fill_done:*)  printf '%s fehlende Paket(e) per wget ergaenzt.\n'  "$1" ;;
 	err_no_pkgs:EN) printf '%s\n' "ERROR: No packages downloaded - aborting." ;;
 	err_no_pkgs:*)  printf '%s\n' "FEHLER: Keine Pakete geladen - Abbruch." ;;
 	err_apk_index:EN) printf '%s\n' "ERROR: apk index failed (on UNTRUSTED: 'apk add --no-cache alpine-keys' and retry)." ;;
@@ -16292,8 +16338,6 @@ t() {
 	err_copy_usrlocal:*)  printf '%s\n' "FEHLER: Kopieren von /usr/local fehlgeschlagen." ;;
 	err_tar_apkovl:EN) printf '%s\n' "ERROR: Creating the apkovl failed." ;;
 	err_tar_apkovl:*)  printf '%s\n' "FEHLER: Erzeugen des apkovl fehlgeschlagen." ;;
-	err_internal_alpe:EN) printf '%s\n' "ERROR: Internal error: alpe-install missing in the apkovl." ;;
-	err_internal_alpe:*)  printf '%s\n' "FEHLER: Interner Fehler: alpe-install fehlt im apkovl." ;;
 	err_isolinux:EN) printf '%s\n' "ERROR: isolinux.bin missing (syslinux package)." ;;
 	err_isolinux:*)  printf '%s\n' "FEHLER: isolinux.bin fehlt (syslinux-Paket)." ;;
 	err_isohdpfx:EN) printf '%s\n' "ERROR: isohdpfx.bin missing (syslinux package)." ;;
@@ -16346,10 +16390,8 @@ t() {
 	info_including:*)  printf '%s\n' "Nehme ins apkovl auf:" ;;
 	info_usrlocal:EN) printf 'Including /usr/local in the apkovl (%s kB).\n'  "$1" ;;
 	info_usrlocal:*) printf 'Nehme /usr/local ins apkovl auf (%s kB).\n'  "$1" ;;
-	info_alpe_embedded:EN) printf '%s\n' "alpe-install embedded (apkovl + ISO root):" ;;
-	info_alpe_embedded:*)  printf '%s\n' "alpe-install eingebettet (apkovl + ISO-Root):" ;;
-	info_apkovl_ok:EN) printf '%s\n' "apkovl created and verified (alpe-install included)." ;;
-	info_apkovl_ok:*)  printf '%s\n' "apkovl erzeugt und verifiziert (alpe-install enthalten)." ;;
+	info_apkovl_ok:EN) printf '%s\n' "apkovl created and verified." ;;
+	info_apkovl_ok:*)  printf '%s\n' "apkovl erzeugt und verifiziert." ;;
 	ph_syslinux:EN) printf '%s\n' "Building BIOS boot (syslinux)" ;;
 	ph_syslinux:*)  printf '%s\n' "Baue BIOS-Boot (syslinux)" ;;
 	ph_grub:EN) printf '%s\n' "Building UEFI boot (grub)" ;;
@@ -16364,12 +16406,6 @@ t() {
 	info_result:*) printf 'Volume-ID: %s | Flavor: %s | Squashfs: %s\n'  "$1" "$2" "$3" ;;
 	info_boot:EN) printf 'Boot: BIOS (El Torito/isohybrid) and UEFI (grub, %s)\n'  "$1" ;;
 	info_boot:*) printf 'Boot: BIOS (El Torito/isohybrid) und UEFI (grub, %s)\n'  "$1" ;;
-	info_install_hint:EN) printf '%s\n' "Installation on a target system: boot the ISO, then 'alpe-install -d <disk>'" ;;
-	info_install_hint:*)  printf '%s\n' "Installation auf Zielsystem: ISO booten, dann 'alpe-install -d <platte>'" ;;
-	info_install_hint2:EN) printf '%s\n' "  (offline possible - kernel, bootloader and packages are included in the /apks repository;" ;;
-	info_install_hint2:*)  printf '%s\n' "  (offline moeglich - Kernel, Bootloader und Pakete sind im /apks-Repository enthalten;" ;;
-	info_install_hint3:EN) printf '%s\n' "   home directories and configuration are restored from the snapshot)" ;;
-	info_install_hint3:*)  printf '%s\n' "   Heimatverzeichnisse und Konfiguration werden aus dem Snapshot wiederhergestellt)" ;;
 	*) printf '%s\n' "$key" ;;
 	esac
 }
@@ -16906,12 +16942,239 @@ if [ "$FULL_FIRMWARE" = yes ]; then
 fi
 
 APKDIR="$ISODIR/apks/$ARCH"
+# Diagnose-Log: bewusst NICHT im Arbeitsverzeichnis - wird WORK nicht per -w
+# angegeben, raeumt der EXIT-Trap das temporaere Verzeichnis komplett weg,
+# das Log muss fuer den Fehlerbericht uebrig bleiben. Platz: neben der ISO.
+CHECK_LOG="$(dirname -- "$OUTPUT")/alpe-fetch-check.log"
+case "$CHECK_LOG" in
+/*) : ;;
+*) CHECK_LOG="$PWD/alpe-fetch-check.log" ;;
+esac
+
+# Diagnose-Check (BEST-EFFORT, bricht nie ab): haengt alle fuer die Analyse
+# eines apk-Fehlers noetigen Angaben an das Log an (Repositories, Paketliste,
+# apk update/simulate, Plattenplatz, Teil-Downloads, Spiegel-Erreichbarkeit,
+# Proxy). Das Log (alpe-fetch-check.log) bitte zur Fehlermeldung geben.
+fetch_diagnose() {
+	{
+		echo "==============================================================="
+		echo "alpe-live fetch-Diagnose  $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+		echo "==============================================================="
+		echo "alpe-live: $VERSION   arch: $ARCH   flavor: $FLAVOR   kernel: $KVER"
+		echo "alpine-release: $(cat "$ALPE_ROOT/etc/alpine-release" 2>/dev/null || echo '?')"
+		echo "apk: $(apk --version 2>&1)"
+		echo "uname: $(uname -a 2>&1)"
+		echo "ALPE_MIRROR: $ALPE_MIRROR   BRANCH: ${BRANCH:-<vom Quellsystem>}   EXTRA: ${ALPE_EXTRA_REPOS:-<keine>}"
+		echo "WORK: $WORK   APKDIR: $APKDIR   OUTPUT: $OUTPUT"
+		echo
+		echo "=== Repositories (FETCH_REPOS=$FETCH_REPOS) ==="
+		cat "$FETCH_REPOS" 2>/dev/null || echo "(nicht lesbar)"
+		echo
+		echo "=== Quell-Repositories ($ALPE_ROOT/etc/apk/repositories) ==="
+		cat "$ALPE_ROOT/etc/apk/repositories" 2>/dev/null || echo "(nicht vorhanden)"
+		echo
+		echo "=== world des Quellsystems ($WORLD_SRC) ==="
+		cat "$WORLD_SRC" 2>/dev/null || echo "(nicht lesbar)"
+		echo
+		echo "=== Zu ladende Pakete ==="
+		echo "LIVE_WORLD:  $LIVE_WORLD"
+		echo "HELPER_PKGS: $HELPER_PKGS"
+		# shellcheck disable=SC2086
+		for d_pkg in $FETCH_PKGS; do echo "FETCH: $d_pkg"; done
+		echo
+		echo "=== apk update (vollstaendige Ausgabe) ==="
+		apk --repositories-file "$FETCH_REPOS" update 2>&1 \
+			|| echo "(apk update fehlgeschlagen, rc=$?)"
+		echo
+		echo "=== apk fetch --simulate (Paket-Aufloesung, kein Download) ==="
+		# shellcheck disable=SC2086
+		apk --repositories-file "$FETCH_REPOS" fetch --recursive --simulate \
+			--output "$APKDIR" $FETCH_PKGS 2>&1 \
+			|| echo "(simulate fehlgeschlagen, rc=$?)"
+		echo
+		echo "=== Plattenplatz/Inodes (WORK=$WORK) ==="
+		df -h "$WORK" 2>/dev/null || :
+		df -i "$WORK" 2>/dev/null || :
+		echo
+		echo "=== Teil-Downloads in APKDIR ==="
+		ls -la "$APKDIR" 2>/dev/null | head -n 50 || :
+		du -sh "$APKDIR" 2>/dev/null || :
+		echo
+		echo "=== Erreichbarkeit der Spiegel ==="
+		while read -r d_url _d_rest; do
+			case "$d_url" in ""|"#"*) continue ;; esac
+			case "$d_url" in @*) d_url=$_d_rest ;; esac
+			case "$d_url" in http://*|https://*) : ;; *) continue ;; esac
+			echo "--- $d_url"
+			if wget -T 10 -q --spider "$d_url/$ARCH/APKINDEX.tar.gz" 2>&1; then
+				echo "OK (APKINDEX.tar.gz erreichbar)"
+			else
+				echo "NICHT erreichbar (wget rc=$?)"
+			fi
+			d_host=${d_url#*://}
+			d_host=${d_host%%/*}
+			nslookup "$d_host" 2>&1 | head -n 6
+		done < "$FETCH_REPOS"
+		echo
+		echo "=== Proxy-Umgebung ==="
+		env 2>/dev/null | grep -i proxy || echo "(keine Proxy-Variablen gesetzt)"
+		echo
+		echo "=== Ende der Diagnose ==="
+	} >> "$CHECK_LOG" 2>&1
+}
+
+# Fehlende Paketdateien per wget nachladen (apk3-Client-Bug, siehe beim
+# fetch). Quelle: exakte URL aus der Soll-Liste, dann jeder Ersatz-Spiegel
+# mit jedem Repository-Zweig (apk waehlt die URL zuweilen vom falschen
+# Zweig, z. B. v3.24 statt edge). Vorhandene Dateien zaehlen nur nach
+# apk verify - apk hinterlaesst bei seinem I/O-Fehler gern abgeschnittene
+# Dateien; korrupte Dateien werden verworfen und neu geladen.
+fetch_fill_missing() {
+	FILL_MISSING=0
+	[ -s "$URL_LIST" ] || return 0
+	FILL_BRANCHES=""
+	while read -r f_tag f_url; do
+		[ -n "$f_url" ] || f_url=$f_tag
+		case "$f_url" in http://*|https://*) : ;; *) continue ;; esac
+		f_path=${f_url#*://}
+		f_path=${f_path#*/}
+		case "$f_path" in
+		alpine/*) FILL_BRANCHES="$FILL_BRANCHES ${f_path#alpine/}" ;;
+		esac
+	done < "$FETCH_REPOS"
+	FILL_OK=0
+	while read -r w_url; do
+		[ -n "$w_url" ] || continue
+		w_file=${w_url##*/}
+		if [ -f "$APKDIR/$w_file" ] && apk verify "$APKDIR/$w_file" >/dev/null 2>&1; then
+			continue
+		fi
+		rm -f "$APKDIR/$w_file"
+		print_text "$(t info_wget_fill "$w_file")"
+		case "$w_url" in
+		http://*|https://*)
+			if wget -T 30 -q -O "$APKDIR/$w_file" "$w_url" 2>/dev/null \
+				&& apk verify "$APKDIR/$w_file" >/dev/null 2>&1; then
+				FILL_OK=$((FILL_OK + 1))
+				continue
+			fi
+			rm -f "$APKDIR/$w_file"
+			;;
+		esac
+		w_done=""
+		for w_base in $ALPE_FALLBACK_MIRRORS; do
+			for w_br in $FILL_BRANCHES; do
+				if wget -T 30 -q -O "$APKDIR/$w_file" "$w_base/$w_br/$ARCH/$w_file" 2>/dev/null \
+					&& apk verify "$APKDIR/$w_file" >/dev/null 2>&1; then
+					w_done="j"
+					FILL_OK=$((FILL_OK + 1))
+					break 2
+				fi
+				rm -f "$APKDIR/$w_file"
+			done
+		done
+		if [ -z "$w_done" ]; then
+			te warn_wget_failed "$w_file"
+			FILL_MISSING=$((FILL_MISSING + 1))
+		fi
+	done < "$URL_LIST"
+	[ "$FILL_OK" -gt 0 ] && print_text "$(t info_wget_fill_done "$FILL_OK")"
+	return 0
+}
+
 print_text "$(t info_update_indexes)"
-apk --repositories-file "$FETCH_REPOS" update --quiet \
-	|| td err_apk_update
+# apk update meldet rc=1, wenn EIN Index-Transfer klemmt, obwohl die
+# uebrigen Indizes frisch geladen sind und fuer den betroffenen ein "stale"
+# Index (alter, benutzbarer Stand) vorliegt ("0 unavailable, 1 stale").
+# Abbruch waere hier falsch: der fetch unten ist das eigentliche Tor und
+# scheitert mit Diagnose-Log, falls ein Index wirklich fehlt.
+if ! apk --repositories-file "$FETCH_REPOS" update --quiet; then
+	te warn_apk_update_stale
+	# Klemmt der Spiegel (ueblich: dl-cdn), werden die Repositories auf den
+	# ersten erreichbaren Ersatz-Spiegel umgeschrieben und das Update einmal
+	# dort wiederholt - ohne frischen Index koennen Pakete dieses Zweigs
+	# sonst unsichtbar fehlen.
+	for u_base in $ALPE_FALLBACK_MIRRORS; do
+		sed -e "s|//dl-cdn.alpinelinux.org/alpine|$u_base|g" \
+			-e "s|//cdn.alpinelinux.org/alpine|$u_base|g" \
+			"$FETCH_REPOS" > "$FETCH_REPOS.fb"
+		cmp -s "$FETCH_REPOS" "$FETCH_REPOS.fb" && continue
+		if apk --repositories-file "$FETCH_REPOS.fb" update --quiet; then
+			FETCH_REPOS="$FETCH_REPOS.fb"
+			break
+		fi
+	done
+fi
+
+# Indizes, die apk wegen des Client-Bugs (>~2 MiB) nicht laden konnte, hier
+# per wget auf die Platte holen und als LOKALE Repositories hinten anhaengen:
+# apk liest sie ein (Signaturpruefung laeuft normal gegen /etc/apk/keys) und
+# kann damit vollstaendig aufloesen. Die lokalen Repos stehen HINTER den
+# echten Spiegeln - ihre (nicht existenten) Paket-URLs greifen nur fuer
+# Pakete, die sonst nicht aufloesbar waeren, und genau diese laedt der
+# wget-Nachlade-Mechanismus unten von den Spiegeln.
+IDX_DIR="$WORK/index-cache"
+mkdir -p "$IDX_DIR" 2>/dev/null || :
+IDX_REPOS=""
+idx_n=0
+while read -r f_tag f_url; do
+	[ -n "$f_url" ] || f_url=$f_tag
+	case "$f_url" in http://*|https://*) : ;; *) continue ;; esac
+	f_path=${f_url#*://}
+	f_path=${f_path#*/}
+	case "$f_path" in
+	alpine/*) f_branch=${f_path#alpine/} ;;
+	*) continue ;;
+	esac
+	idx_n=$((idx_n + 1))
+	idx_file="$IDX_DIR/$idx_n"
+	mkdir -p "$idx_file/$ARCH" 2>/dev/null || :
+	if [ ! -s "$idx_file/$ARCH/APKINDEX.tar.gz" ]; then
+		for w_base in "$f_url" $ALPE_FALLBACK_MIRRORS; do
+			wget -T 30 -q -O "$idx_file/$ARCH/APKINDEX.tar.gz" \
+				"$w_base/$f_branch/$ARCH/APKINDEX.tar.gz" 2>/dev/null && break
+			rm -f "$idx_file/$ARCH/APKINDEX.tar.gz"
+		done
+	fi
+	[ -s "$idx_file/$ARCH/APKINDEX.tar.gz" ] || continue
+	IDX_REPOS="$IDX_REPOS
+$idx_file"
+done < "$FETCH_REPOS"
+if [ -n "$IDX_REPOS" ]; then
+	{ cat "$FETCH_REPOS"; printf '%s\n' "$IDX_REPOS"; } > "$FETCH_REPOS.idx"
+	FETCH_REPOS="$FETCH_REPOS.idx"
+fi
+
+# apk3-Client-Bug (3.0.x): Uebertragungen grosser Dateien (>~2 MiB) brechen
+# mit "I/O error"/"unexpected end of file" ab - nachgewiesen selbst gegen
+# einen LOKALEN HTTP-Server (kein Spiegel/Netzwerk dazwischen), waehrend
+# busybox wget im selben Netz dieselben Dateien vollstaendig laedt. Kein
+# Spiegel-/TLS-/Parallelismus-Problem. Strategie:
+#   1. Soll-Liste mit exakten URLs ("apk fetch --simulate --url")
+#   2. Ein apk-fetch-Lauf (laedt alles, was geht; stderr ins Diagnose-Log)
+#   3. Fehlbestand per busybox wget nachladen (fetch_fill_missing, mit
+#      apk verify und Ersatz-Spiegeln)
+# Bleibt danach etwas fehlen (oder die Soll-Liste ist leer): Diagnose-Log
+# alpe-fetch-check.log schreiben und abbrechen - Pfad steht in der
+# Fehlermeldung, dieses Log bitte zur Fehlermeldung geben.
+print_text "$(t info_fetch_start)"
+URL_LIST="$WORK/fetch-urls.txt"
+# shellcheck disable=SC2086
+apk --repositories-file "$FETCH_REPOS" fetch --recursive --simulate --url \
+	$FETCH_PKGS > "$URL_LIST" 2>> "$CHECK_LOG" || :
+# WICHTIG: dieses Skript laeuft mit "set -eu" - der fetch MUSS mit || :
+# entschaeft werden, sonst stirbt die Fill-Logik unten noch vor ihrem
+# ersten Aufruf, wenn apk wegen des Client-Bugs rc!=0 liefert.
 # shellcheck disable=SC2086
 apk --repositories-file "$FETCH_REPOS" fetch --recursive --output "$APKDIR" $FETCH_PKGS \
-	|| td err_apk_fetch
+	2>> "$CHECK_LOG" || :
+fetch_fill_missing
+if [ ! -s "$URL_LIST" ] || [ "$FILL_MISSING" -gt 0 ]; then
+	cat "$CHECK_LOG" 2>/dev/null
+	fetch_diagnose
+	td err_apk_fetch_log "$CHECK_LOG"
+fi
+rm -f "$CHECK_LOG" "$URL_LIST"
 ls "$APKDIR"/*.apk >/dev/null 2>&1 || td err_no_pkgs
 
 touch "$ISODIR/apks/.boot_repository"
@@ -16944,8 +17207,7 @@ __EOF__
 # warnt fuer jede nicht erreichbare URL ("opening from cache ... No such
 # file or directory"). Ohne Datei schreibt das initramfs automatisch nur das
 # echte Boot-Medium hinein -> ruhiger Boot (Verhalten wie offizielles ISO).
-# Die Netzwerk-Repos wandern als repositories.alpe-network mit; alpe-install
-# stellt daraus /etc/apk/repositories des installierten Systems her.
+# Die Netzwerk-Repos wandern nur zu Referenz als repositories.alpe-network mit.
 rm -f "$OVL_DIR/etc/apk/repositories"
 copy_repositories > "$OVL_DIR/etc/apk/repositories.alpe-network"
 
@@ -17033,37 +17295,8 @@ if [ -d "$ALPE_ROOT/usr/local" ] \
 	print_text "$(t info_usrlocal "${local_kb:-0}")"
 fi
 
-# alpe-install OPTIONAL einbetten (apkovl + ISO-Root). Ohne es entsteht eine
-# reine Live-ISO. Akzeptierte Namen: alpe-install.sh / alpe-install, im
-# Skript- oder Arbeitsverzeichnis.
-case "$0" in
-*/*) SCRIPT_DIR=${0%/*} ;;
-*)   SCRIPT_DIR=. ;;
-esac
-alpe_install_src=
-for alpe_cand in \
-	"$SCRIPT_DIR/alpe-install.sh" "$SCRIPT_DIR/alpe-install" \
-	"$PWD/alpe-install.sh" "$PWD/alpe-install"; do
-	if [ -f "$alpe_cand" ]; then
-		alpe_install_src=$alpe_cand
-		break
-	fi
-done
-if [ -n "$alpe_install_src" ]; then
-	mkdir -p "$OVL_DIR/usr/local/bin"
-	cp "$alpe_install_src" "$OVL_DIR/usr/local/bin/alpe-install"
-	chmod 755 "$OVL_DIR/usr/local/bin/alpe-install"
-	cp "$alpe_install_src" "$ISODIR/alpe-install.sh"
-	print_info_path "$(t info_alpe_embedded)" "$alpe_install_src"
-fi
-
 tar -C "$OVL_DIR" -czf "$ISODIR/localhost.apkovl.tar.gz" . \
 	|| td err_tar_apkovl
-
-# Verifikation erst NACH der Archiv-Erzeugung (Bug #14: stand vorher davor)
-if ! tar -tzf "$ISODIR/localhost.apkovl.tar.gz" | grep -q "usr/local/bin/alpe-install"; then
-	td err_internal_alpe
-fi
 print_other "$(t info_apkovl_ok)"
 
 # ------------------------------------------------------------- BIOS: syslinux --

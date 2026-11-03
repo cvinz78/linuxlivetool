@@ -37,7 +37,7 @@
   <circle cx="730" cy="132" r="8" fill="#ff5f56"/>
   <circle cx="756" cy="132" r="8" fill="#ffbd2e"/>
   <circle cx="782" cy="132" r="8" fill="#27c93f"/>
-  <text x="856" y="139" font-family="DejaVu Sans Mono, monospace" font-size="18" fill="#8a99b5">linuxlivetool v3.3</text>
+  <text x="955" y="139" text-anchor="middle" font-family="DejaVu Sans Mono, monospace" font-size="18" fill="#8a99b5">linuxlivetool</text>
   <text x="730" y="200" font-family="DejaVu Sans Mono, monospace" font-size="22" fill="#00d7ff">=== Hauptmenü ===</text>
   <text x="730" y="245" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  1) Alpine</text>
   <text x="730" y="281" font-family="DejaVu Sans Mono, monospace" font-size="24" fill="#ffd75f">  2) Arch</text>
