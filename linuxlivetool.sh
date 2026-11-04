@@ -49,7 +49,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-TOOLBOX_VERSION="4.3"
+TOOLBOX_VERSION="4.8"
 
 MARK_S='#@@@SCRIPT:'
 MARK_E='#@@@END:'
@@ -727,7 +727,7 @@ exit 0
 #
 set -euo pipefail
 
-VERSION="3.4"
+VERSION="3.5"
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || true)"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$0"
@@ -1739,8 +1739,8 @@ Ausgabe-ISO liegt im selben Verzeichnis wie die Quelldateien." ;;
     err_iso_one_target:*)  printf '%s\n' "Nur ein ISO-Ziel angeben." ;;
     err_iso_umount_failed:EN) printf "'%s' could not be unmounted!\n"  "$1" ;;
     err_iso_umount_failed:*) printf "'%s' konnte nicht ausgehängt werden!\n"  "$1" ;;
-    grub_std:EN) printf '%s\n' "Standard (quiet splash)" ;;
-    grub_std:*)  printf '%s\n' "Standard (quiet splash)" ;;
+    grub_std:EN) printf '%s\n' "Standard" ;;
+    grub_std:*)  printf '%s\n' "Standard" ;;
     grub_verbose:EN) printf '%s\n' "verbose (error diagnosis)" ;;
     grub_verbose:*)  printf '%s\n' "ausführlich (Fehlerdiagnose)" ;;
     grub_toram:EN) printf '%s\n' "load completely into RAM (toram)" ;;
@@ -4756,7 +4756,7 @@ ALSTUB
         printf 'set default=0\n'
     } > "$LIVE_TREE/boot/grub/grub.cfg"
 
-    add_entry "$(t grub_std)" "quiet splash"
+    add_entry "$(t grub_std)" ""
     add_entry "$(t grub_verbose)" "loglevel=7"
     add_entry "$(t grub_toram)" "toram"
     add_entry "$(t grub_nomodeset)" "nomodeset"
@@ -6098,7 +6098,7 @@ fi
 #
 set -euo pipefail
 
-VERSION="1.5"
+VERSION="1.6"
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || true)"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$0"
@@ -7110,8 +7110,8 @@ Ausgabe-ISO liegt im selben Verzeichnis wie die Quelldateien." ;;
     err_iso_one_target:*)  printf '%s\n' "Nur ein ISO-Ziel angeben." ;;
     err_iso_umount_failed:EN) printf "'%s' could not be unmounted!\n"  "$1" ;;
     err_iso_umount_failed:*) printf "'%s' konnte nicht ausgehängt werden!\n"  "$1" ;;
-    grub_std:EN) printf '%s\n' "Standard (quiet splash)" ;;
-    grub_std:*)  printf '%s\n' "Standard (quiet splash)" ;;
+    grub_std:EN) printf '%s\n' "Standard" ;;
+    grub_std:*)  printf '%s\n' "Standard" ;;
     grub_verbose:EN) printf '%s\n' "verbose (error diagnosis)" ;;
     grub_verbose:*)  printf '%s\n' "ausführlich (Fehlerdiagnose)" ;;
     grub_toram:EN) printf '%s\n' "load completely into RAM (toram)" ;;
@@ -10138,7 +10138,7 @@ ALSTUB
         printf 'set default=0\n'
     } > "$LIVE_TREE/boot/grub/grub.cfg"
 
-    add_entry "$(t grub_std)" "quiet splash"
+    add_entry "$(t grub_std)" ""
     add_entry "$(t grub_verbose)" "loglevel=7"
     add_entry "$(t grub_toram)" "toram"
     add_entry "$(t grub_nomodeset)" "nomodeset"
@@ -15868,7 +15868,7 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROG="$(basename -- "$0")"
-VERSION="2.5"
+VERSION="2.9"
 
 # ==================== SPRACHE / OPTIONEN ====================
 # Sprache aller eigenen Meldungen: AUTO (Systemsprache, Voreinstellung),
@@ -16158,14 +16158,15 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROGRAM="$(basename -- "$0")"
-VERSION=2.5.0
+VERSION=2.9
 
 ALPE_ROOT="${ALPE_ROOT:-/}"
 ALPE_EXTRA_REPOS="${ALPE_EXTRA_REPOS:-}"
 ALPE_MIRROR="${ALPE_MIRROR:-https://dl-cdn.alpinelinux.org/alpine}"
-# Ersatz-Spiegel fuer den wget-Nachladefall (apk3-Client-Bug bei grossen
-# Dateien, siehe fetch-Abschnitt) - Pfadstruktur hinter /alpine/ identisch.
-ALPE_FALLBACK_MIRRORS="${ALPE_FALLBACK_MIRRORS:-https://dl-2.alpinelinux.org/alpine https://mirror.leaseweb.com/alpine https://ftp.halifax.rwth-aachen.de/alpine}"
+# Ersatz-Spiegel fuer den apk-Update-Fallback (klemmender Spiegel, siehe
+# apk update im Fetch-Abschnitt) - Pfadstruktur hinter /alpine/ identisch.
+# Ueberschreibbar via ALPE_FALLBACK_MIRRORS.
+ALPE_FALLBACK_MIRRORS="${ALPE_FALLBACK_MIRRORS:-https://dl-2.alpinelinux.org/alpine https://mirrors.edge.kernel.org/alpine https://ftp.fau.de/alpine https://mirror.netcologne.de/alpine}"
 # BRANCH: leer = Repositories des Quell-Systems uebernehmen; sonst z. B.
 # "edge", "latest-stable" oder eine feste Version wie "3.22"
 BRANCH=""
@@ -16316,12 +16317,10 @@ Please hand over this file when reporting the problem.\n' "$1" ;;
 Bitte diese Datei bei der Fehlermeldung mitgeben.\n' "$1" ;;
 	info_fetch_start:EN) printf '%s\n' "Fetching packages (errors are logged; this can take a while)..." ;;
 	info_fetch_start:*)  printf '%s\n' "Lade Pakete (Fehler werden mitgeschrieben; das kann dauern)..." ;;
-	info_wget_fill:EN) printf 'Fetching %s via wget (apk3 client bug on large files)...\n'  "$1" ;;
-	info_wget_fill:*)  printf 'Lade %s per wget nach (apk3-Client-Bug bei grossen Dateien)...\n'  "$1" ;;
-	warn_wget_failed:EN) printf 'Warning: %s could not be fetched via wget (all mirrors).\n'  "$1" ;;
-	warn_wget_failed:*)  printf 'Warnung: %s auch per wget nicht beschaffbar (alle Spiegel).\n'  "$1" ;;
-	info_wget_fill_done:EN) printf 'Backfilled %s missing package(s) via wget.\n'  "$1" ;;
-	info_wget_fill_done:*)  printf '%s fehlende Paket(e) per wget ergaenzt.\n'  "$1" ;;
+	warn_pkg_missing:EN) printf 'Missing package file: %s\n'  "$1" ;;
+	warn_pkg_missing:*)  printf 'Fehlende Paketdatei: %s\n'  "$1" ;;
+	warn_low_space:EN) printf 'Warning: little space under %s (%s MiB free, tmpfs/RAM?) - a large package set (linux-firmware) can make the fetch fail on memory shortage; use -w <directory> for a disk-backed build.\n'  "$1" "$2" ;;
+	warn_low_space:*)  printf 'Warnung: wenig Platz unter %s (%s MiB frei, tmpfs/RAM?) - bei grossem Paketumfang (linux-firmware) kann der fetch an Speichermangel scheitern; mit -w <verzeichnis> auf Platte ausweichen.\n'  "$1" "$2" ;;
 	err_no_pkgs:EN) printf '%s\n' "ERROR: No packages downloaded - aborting." ;;
 	err_no_pkgs:*)  printf '%s\n' "FEHLER: Keine Pakete geladen - Abbruch." ;;
 	err_apk_index:EN) printf '%s\n' "ERROR: apk index failed (on UNTRUSTED: 'apk add --no-cache alpine-keys' and retry)." ;;
@@ -17006,11 +17005,6 @@ fetch_diagnose() {
 			case "$d_url" in @*) d_url=$_d_rest ;; esac
 			case "$d_url" in http://*|https://*) : ;; *) continue ;; esac
 			echo "--- $d_url"
-			if wget -T 10 -q --spider "$d_url/$ARCH/APKINDEX.tar.gz" 2>&1; then
-				echo "OK (APKINDEX.tar.gz erreichbar)"
-			else
-				echo "NICHT erreichbar (wget rc=$?)"
-			fi
 			d_host=${d_url#*://}
 			d_host=${d_host%%/*}
 			nslookup "$d_host" 2>&1 | head -n 6
@@ -17023,65 +17017,11 @@ fetch_diagnose() {
 	} >> "$CHECK_LOG" 2>&1
 }
 
-# Fehlende Paketdateien per wget nachladen (apk3-Client-Bug, siehe beim
-# fetch). Quelle: exakte URL aus der Soll-Liste, dann jeder Ersatz-Spiegel
-# mit jedem Repository-Zweig (apk waehlt die URL zuweilen vom falschen
-# Zweig, z. B. v3.24 statt edge). Vorhandene Dateien zaehlen nur nach
-# apk verify - apk hinterlaesst bei seinem I/O-Fehler gern abgeschnittene
-# Dateien; korrupte Dateien werden verworfen und neu geladen.
-fetch_fill_missing() {
-	FILL_MISSING=0
-	[ -s "$URL_LIST" ] || return 0
-	FILL_BRANCHES=""
-	while read -r f_tag f_url; do
-		[ -n "$f_url" ] || f_url=$f_tag
-		case "$f_url" in http://*|https://*) : ;; *) continue ;; esac
-		f_path=${f_url#*://}
-		f_path=${f_path#*/}
-		case "$f_path" in
-		alpine/*) FILL_BRANCHES="$FILL_BRANCHES ${f_path#alpine/}" ;;
-		esac
-	done < "$FETCH_REPOS"
-	FILL_OK=0
-	while read -r w_url; do
-		[ -n "$w_url" ] || continue
-		w_file=${w_url##*/}
-		if [ -f "$APKDIR/$w_file" ] && apk verify "$APKDIR/$w_file" >/dev/null 2>&1; then
-			continue
-		fi
-		rm -f "$APKDIR/$w_file"
-		print_text "$(t info_wget_fill "$w_file")"
-		case "$w_url" in
-		http://*|https://*)
-			if wget -T 30 -q -O "$APKDIR/$w_file" "$w_url" 2>/dev/null \
-				&& apk verify "$APKDIR/$w_file" >/dev/null 2>&1; then
-				FILL_OK=$((FILL_OK + 1))
-				continue
-			fi
-			rm -f "$APKDIR/$w_file"
-			;;
-		esac
-		w_done=""
-		for w_base in $ALPE_FALLBACK_MIRRORS; do
-			for w_br in $FILL_BRANCHES; do
-				if wget -T 30 -q -O "$APKDIR/$w_file" "$w_base/$w_br/$ARCH/$w_file" 2>/dev/null \
-					&& apk verify "$APKDIR/$w_file" >/dev/null 2>&1; then
-					w_done="j"
-					FILL_OK=$((FILL_OK + 1))
-					break 2
-				fi
-				rm -f "$APKDIR/$w_file"
-			done
-		done
-		if [ -z "$w_done" ]; then
-			te warn_wget_failed "$w_file"
-			FILL_MISSING=$((FILL_MISSING + 1))
-		fi
-	done < "$URL_LIST"
-	[ "$FILL_OK" -gt 0 ] && print_text "$(t info_wget_fill_done "$FILL_OK")"
-	return 0
-}
+# Fehlende Paketdateien werden nach dem fetch je Datei geprueft (apk verify)
+# und gemeldet - ein Ersatzdownload findet bewusst nicht statt: der Paket-
+# bezug laeuft ausschliesslich ueber die Standard-Paketverwaltung (apk).
 
+# Paketbezug ausschliesslich ueber die Standard-Paketverwaltung (apk).
 print_text "$(t info_update_indexes)"
 # apk update meldet rc=1, wenn EIN Index-Transfer klemmt, obwohl die
 # uebrigen Indizes frisch geladen sind und fuer den betroffenen ein "stale"
@@ -17106,70 +17046,60 @@ if ! apk --repositories-file "$FETCH_REPOS" update --quiet; then
 	done
 fi
 
-# Indizes, die apk wegen des Client-Bugs (>~2 MiB) nicht laden konnte, hier
-# per wget auf die Platte holen und als LOKALE Repositories hinten anhaengen:
-# apk liest sie ein (Signaturpruefung laeuft normal gegen /etc/apk/keys) und
-# kann damit vollstaendig aufloesen. Die lokalen Repos stehen HINTER den
-# echten Spiegeln - ihre (nicht existenten) Paket-URLs greifen nur fuer
-# Pakete, die sonst nicht aufloesbar waeren, und genau diese laedt der
-# wget-Nachlade-Mechanismus unten von den Spiegeln.
-IDX_DIR="$WORK/index-cache"
-mkdir -p "$IDX_DIR" 2>/dev/null || :
-IDX_REPOS=""
-idx_n=0
-while read -r f_tag f_url; do
-	[ -n "$f_url" ] || f_url=$f_tag
-	case "$f_url" in http://*|https://*) : ;; *) continue ;; esac
-	f_path=${f_url#*://}
-	f_path=${f_path#*/}
-	case "$f_path" in
-	alpine/*) f_branch=${f_path#alpine/} ;;
-	*) continue ;;
-	esac
-	idx_n=$((idx_n + 1))
-	idx_file="$IDX_DIR/$idx_n"
-	mkdir -p "$idx_file/$ARCH" 2>/dev/null || :
-	if [ ! -s "$idx_file/$ARCH/APKINDEX.tar.gz" ]; then
-		for w_base in "$f_url" $ALPE_FALLBACK_MIRRORS; do
-			wget -T 30 -q -O "$idx_file/$ARCH/APKINDEX.tar.gz" \
-				"$w_base/$f_branch/$ARCH/APKINDEX.tar.gz" 2>/dev/null && break
-			rm -f "$idx_file/$ARCH/APKINDEX.tar.gz"
-		done
-	fi
-	[ -s "$idx_file/$ARCH/APKINDEX.tar.gz" ] || continue
-	IDX_REPOS="$IDX_REPOS
-$idx_file"
-done < "$FETCH_REPOS"
-if [ -n "$IDX_REPOS" ]; then
-	{ cat "$FETCH_REPOS"; printf '%s\n' "$IDX_REPOS"; } > "$FETCH_REPOS.idx"
-	FETCH_REPOS="$FETCH_REPOS.idx"
+# Der Paketbezug laeuft ausschliesslich ueber die Standard-Paketverwaltung
+# (apk); ein nicht ladbarer Index faellt im Fetch-Abruch unten mit dem
+# Diagnose-Log auf.
+
+# Vorab-Check: WORK liegt als Standard in /tmp - auf Alpine ein tmpfs (RAM).
+# Kernel, Welt und ggf. linux-firmware brauchen zusammen ueber 750 MB; geht
+# der Platz aus, stirbt der fetch mit "No space left on device"/"I/O error"
+# - unabhaengig vom Spiegel. Mit -w <verzeichnis> liegt der Bau auf Platte.
+work_free_kb=$(df -k "$WORK" 2>/dev/null | awk 'NR==2 {print $4}')
+case "$work_free_kb" in ''|*[!0-9]*) work_free_kb=0 ;; esac
+if [ "$work_free_kb" -lt 1048576 ]; then
+	te warn_low_space "$WORK" "$((work_free_kb / 1024))"
 fi
 
-# apk3-Client-Bug (3.0.x): Uebertragungen grosser Dateien (>~2 MiB) brechen
-# mit "I/O error"/"unexpected end of file" ab - nachgewiesen selbst gegen
-# einen LOKALEN HTTP-Server (kein Spiegel/Netzwerk dazwischen), waehrend
-# busybox wget im selben Netz dieselben Dateien vollstaendig laedt. Kein
-# Spiegel-/TLS-/Parallelismus-Problem. Strategie:
-#   1. Soll-Liste mit exakten URLs ("apk fetch --simulate --url")
-#   2. Ein apk-fetch-Lauf (laedt alles, was geht; stderr ins Diagnose-Log)
-#   3. Fehlbestand per busybox wget nachladen (fetch_fill_missing, mit
-#      apk verify und Ersatz-Spiegeln)
-# Bleibt danach etwas fehlen (oder die Soll-Liste ist leer): Diagnose-Log
-# alpe-fetch-check.log schreiben und abbrechen - Pfad steht in der
-# Fehlermeldung, dieses Log bitte zur Fehlermeldung geben.
+# Abgebrochene Uebertragungen hinterlassen in APKDIR abgeschnittene Dateien.
+# Vor dem fetch werden ungueltige Dateien verifiziert und entfernt
+# (fetch_clean_partials); danach: EIN apk-fetch-Lauf (Standard-
+# Paketverwaltung), dann je Datei apk verify - fehlt oder verifiziert
+# etwas nicht, folgt der Abbruch mit dem Diagnose-Log
+# alpe-fetch-check.log - Pfad steht in der Fehlermeldung, dieses Log bitte
+# zur Fehlermeldung geben.
+fetch_clean_partials() {
+	[ -d "$APKDIR" ] || return 0
+	for p_file in "$APKDIR"/*.apk; do
+		[ -f "$p_file" ] || continue
+		apk verify "$p_file" >/dev/null 2>&1 || rm -f -- "$p_file"
+	done
+	return 0
+}
+
 print_text "$(t info_fetch_start)"
 URL_LIST="$WORK/fetch-urls.txt"
+fetch_clean_partials
+# WICHTIG: dieses Skript laeuft mit "set -eu" - simulate/fetch MUESSEN mit
+# || : entschaeft werden; den Fehlbestand zaehlt die Pruefung unten.
 # shellcheck disable=SC2086
 apk --repositories-file "$FETCH_REPOS" fetch --recursive --simulate --url \
 	$FETCH_PKGS > "$URL_LIST" 2>> "$CHECK_LOG" || :
-# WICHTIG: dieses Skript laeuft mit "set -eu" - der fetch MUSS mit || :
-# entschaeft werden, sonst stirbt die Fill-Logik unten noch vor ihrem
-# ersten Aufruf, wenn apk wegen des Client-Bugs rc!=0 liefert.
 # shellcheck disable=SC2086
 apk --repositories-file "$FETCH_REPOS" fetch --recursive --output "$APKDIR" $FETCH_PKGS \
 	2>> "$CHECK_LOG" || :
-fetch_fill_missing
-if [ ! -s "$URL_LIST" ] || [ "$FILL_MISSING" -gt 0 ]; then
+MISSING_N=0
+if [ -s "$URL_LIST" ]; then
+	while read -r m_url; do
+		[ -n "$m_url" ] || continue
+		m_file=${m_url##*/}
+		if [ -f "$APKDIR/$m_file" ] && apk verify "$APKDIR/$m_file" >/dev/null 2>&1; then
+			continue
+		fi
+		te warn_pkg_missing "$m_file"
+		MISSING_N=$((MISSING_N + 1))
+	done < "$URL_LIST"
+fi
+if [ ! -s "$URL_LIST" ] || [ "$MISSING_N" -gt 0 ]; then
 	cat "$CHECK_LOG" 2>/dev/null
 	fetch_diagnose
 	td err_apk_fetch_log "$CHECK_LOG"
@@ -17454,7 +17384,7 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROG="$(basename -- "$0")"
-VERSION=1.8.0
+VERSION=1.8
 MNT=/mnt
 TARGET=
 ROOT_PART=

@@ -76,7 +76,9 @@ Besonderheiten:
 
 - **alpinelive-tool** erzeugt die ISO aus dem installierten System (apkovl + modloop)
   und enthält einen **offline-fähigen Installer** — die gebootete ISO kann ohne Netz
-  installieren. Der Partitionierer **startet immer mit Root-Rechten**.
+  installieren. Der Partitionierer **startet immer mit Root-Rechten**. Der Bau läuft
+  standardmäßig im Arbeitsspeicher (tmpfs); bei wenig Platz warnt das Tool, und mit
+  `-w <verzeichnis>` wird stattdessen auf Platte gebaut.
 - **ubuntu/debian/archlive-tool** fragen Root-Rechte an, sobald eine Aktion sie
   benötigt, und führen **direkt die gewählte Aktion** als root aus — keine erneute
   Menüauswahl nach dem Root-Wechsel.
@@ -351,7 +353,9 @@ Details:
 
 - **alpinelive-tool** builds the ISO from the installed system (apkovl + modloop)
   and includes an **offline installer** — the booted ISO can install without a
-  network. The partitioner **always starts with root privileges**.
+  network. The partitioner **always starts with root privileges**. The build
+  runs in memory (tmpfs) by default; on low space the tool warns, and
+  `-w <directory>` builds on disk instead.
 - **ubuntu/debian/archlive-tool** request root privileges as soon as an action
   needs them and then **execute the selected action directly as root** — no
   repeated menu selection after the root switch.
