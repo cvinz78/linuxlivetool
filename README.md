@@ -240,21 +240,6 @@ ganz am Anfang jedes Skripts kann die Sprache auch fest eingestellt werden
 (`SPRACHE=DE` bzw. `SPRACHE=EN`). Ist eine Sprache gewählt, erscheinen **ausschließlich**
 Ausgaben dieser Sprache — keine Mischsprachen.
 
-### Kein Autologin — bewusste Entscheidung
-
-Eine **automatische Anmeldung (Autologin)** wurde **absichtlich nicht
-implementiert** — aus Sicherheitsbedenken: Ein Live-System, das sich ohne
-Passwortabfrage automatisch als Root/Benutzer anmeldet, bietet jedem, der
-physischen Zugriff auf den Rechner erhält, sofort vollen Zugriff (inkl.
-Festplattenzugriff, Netzwerkkonfiguration, Installer). Stattdessen gilt:
-
-- Das Live-System fragt nach Anmeldedaten bzw. erwartet eine bewusste Anmeldung.
-- Die Tools fordern Root-Rechte nur dann an, wenn eine Aktion sie wirklich
-  benötigt (per `sudo` bzw. `su`, mit Passwortabfrage).
-
-Wer Autologin dennoch möchte, muss es nach dem Booten selbst und bewusst
-einrichten — das Skript liefert es nicht mit.
-
 ### Voraussetzungen
 
 - Linux, `shell` bzw. POSIX-`sh` (busybox-ash reicht für das Alpine-Tool)
@@ -523,21 +508,6 @@ The default language is **German**. Use `-de` or `-en` to force a language; you
 can also set it permanently at the top of each script (`SPRACHE=DE` or
 `SPRACHE=EN`). Once a language is chosen, output appears in **that language
 only** — no mixed languages.
-
-### No autologin — deliberate decision
-
-**Automatic login (autologin)** was **deliberately not implemented** for
-security reasons: a live system that logs in automatically as root/user without
-any password prompt gives anyone with physical access to the machine immediate
-full access (including disks, network configuration and the installer).
-Instead:
-
-- The live system asks for credentials or expects a conscious login.
-- The tools request root privileges only when an action actually needs them
-  (via `sudo` or `su`, with a password prompt).
-
-If you want autologin anyway, you must set it up yourself after booting —
-the script does not ship it.
 
 ### Requirements
 
