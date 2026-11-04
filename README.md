@@ -16,7 +16,7 @@ ein **fünftes Tool Teil der Sammlung**: Festplatten/Partitionen **klonen, image
 
 Die vier Live-Tools können jeweils:
 
-- eine **Live-ISO vom laufenden System** erstellen (BIOS **und** UEFI bootfähig, remastert — das eigene System als bootbares Abbild),
+- eine **Live-ISO vom laufenden System** erstellen (BIOS **und** UEFI bootfähig, remastert — das eigene System als bootbares Abbild), von **Server- und Desktop-Systemen** (Server = ohne grafische Oberfläche),
 - das **Live-System auf Festplatte/Partition installieren** (inkl. Bootloader),
 - **Festplatten/Partitionen partitionieren und formatieren** (interaktiver Partitionierer),
 - Bau-Artefakte **aufräumen** und mögliche **Installationsziele anzeigen**.
@@ -306,7 +306,8 @@ recover disks/partitions.
 The four live tools can each:
 
 - create a **live ISO from the running system** (bootable on BIOS **and** UEFI,
-  remastered — your own system as a bootable image),
+  remastered — your own system as a bootable image), from **server and desktop
+  systems** (server = without graphical interface),
 - **install the live system to a disk or partition** (including bootloader),
 - **partition and format disks/partitions** (interactive partitioner),
 - **clean up** build artifacts and **show possible installation targets**.
