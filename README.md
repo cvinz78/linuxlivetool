@@ -246,6 +246,8 @@ Ausgaben dieser Sprache — keine Mischsprachen.
 
 - Linux, `shell` bzw. POSIX-`sh` (busybox-ash reicht für das Alpine-Tool)
 - Root-Rechte für schreibende Aktionen (werden per `sudo` — Fallback `su` — angefordert)
+- **Für den ISO-Bau: mindestens 2 GB RAM** — der Bau läuft (Standard) im
+  Arbeitsspeicher; bei weniger RAM mit `-w <verzeichnis>` auf Platte bauen
 - Für den ISO-Bau: die jeweiligen Pakete (z. B. `xorriso`, `squashfs-tools`,
   `syslinux`, `grub-bios`, `grub-efi`, `mtools`); das Alpine-Tool erkennt fehlende
   Pakete und bietet die Installation per `apk` an
@@ -517,6 +519,8 @@ only** — no mixed languages.
 
 - Linux, `shell` or POSIX-`sh` (busybox-ash is sufficient for the Alpine tool)
 - Root privileges for write actions (requested via `sudo` — fallback `su`)
+- **For building ISOs: at least 2 GB RAM** — the build runs in memory by
+  default; with less RAM, build on disk using `-w <directory>`
 - For building ISOs: the respective packages (e.g. `xorriso`, `squashfs-tools`,
   `syslinux`, `grub-bios`, `grub-efi`, `mtools`); the Alpine tool detects missing
   packages and offers installation via `apk`
