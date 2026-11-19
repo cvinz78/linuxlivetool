@@ -13,6 +13,7 @@
 `linuxlivetool.sh` ist **ein einziges, in sich geschlossenes shell-Skript**. Es enthält die
 vier LinuxLiveTools für **Ubuntu, Debian, Arch und Alpine** — und mit **Clonie** ist jetzt
 ein **fünftes Tool Teil der Sammlung**: Festplatten/Partitionen **klonen, imagen, recovern**.
+Der aktuelle Stand dieses Bundles ist `linuxlivetool` **5.1** mit `clonie` **7.2**.
 
 Die vier Live-Tools können jeweils:
 
@@ -114,7 +115,7 @@ Werkzeug für Festplatten und Partitionen:
 ./linuxlivetool.sh                       # interaktives Menü (Standard: Deutsch)
 
 ./linuxlivetool.sh -x  <verzeichnis>     # alle 5 Tools einfach entpacken (4 Live-Tools + Clonie)
-./linuxlivetool.sh -xx <verzeichnis>     # die 12 Einzelskripte der 4 Live-Tools + Clonie entpacken
+./linuxlivetool.sh -xx <verzeichnis>     # 13 Dateien: 12 Einzelskripte der Live-Tools + Clonie
 ./linuxlivetool.sh -xx arch <verzeichnis># nur die Einzelskripte eines Tools
                                         #   (arch | alpine | ubuntu | debian | clonie | all)
                                         #   (Clonie: eine Datei, keine Export-Aufteilung)
@@ -242,6 +243,21 @@ ganz am Anfang jedes Skripts kann die Sprache auch fest eingestellt werden
 (`SPRACHE=DE` bzw. `SPRACHE=EN`). Ist eine Sprache gewählt, erscheinen **ausschließlich**
 Ausgaben dieser Sprache — keine Mischsprachen.
 
+### Automatisierte Funktionstests
+
+Die sichere CLI-Test-Suite für alle fünf eingebetteten Tools läuft in einem
+isolierten Docker-Container:
+
+```shell
+./tests/docker-functional.sh
+```
+
+Sie prüft Hilfe, Versionen, Extraktion, Skript-Exporte und -Syntax, lesende
+Zielsuche, Aufräumen in temporären Verzeichnissen sowie das Wieder-Einbetten
+geänderter Tools. Der Container erhält weder Host-Geräte noch zusätzliche
+Linux-Capabilities und hat keinen Netzwerkzugriff. Schreibende Installations-,
+Partitionier- und Klon-Aktionen werden nicht ausgeführt.
+
 ### Voraussetzungen
 
 - Linux, `shell` bzw. POSIX-`sh` (busybox-ash reicht für das Alpine-Tool)
@@ -291,6 +307,7 @@ Installations-Tool ebenso wie **Clonie** schreiben auf Festplatten!
 four LinuxLiveTools for **Ubuntu, Debian, Arch and Alpine** — and with
 **Clonie**, a **fifth tool is now part of the collection**: clone, image and
 recover disks/partitions.
+The current bundle version is `linuxlivetool` **5.1** with `clonie` **7.2**.
 
 The four live tools can each:
 
@@ -392,7 +409,7 @@ for disks and partitions:
 ./linuxlivetool.sh                       # interactive menu (default: German)
 
 ./linuxlivetool.sh -x  <directory>       # extract all 5 tools (4 live tools + Clonie)
-./linuxlivetool.sh -xx <directory>       # extract the 12 standalone scripts of the 4 live tools + Clonie
+./linuxlivetool.sh -xx <directory>       # 13 files: 12 live-tool scripts + Clonie
 ./linuxlivetool.sh -xx arch <directory>  # only the standalone scripts of one tool
                                         #   (arch | alpine | ubuntu | debian | clonie | all)
                                         #   (Clonie: one file, no export split)

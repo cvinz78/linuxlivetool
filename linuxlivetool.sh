@@ -49,7 +49,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-TOOLBOX_VERSION="4.8"
+TOOLBOX_VERSION="5.1"
 
 MARK_S='#@@@SCRIPT:'
 MARK_E='#@@@END:'
@@ -484,6 +484,32 @@ visible_pw_check() {
     return "$rc"
 }
 
+canonical_path() {
+    local p="$1"
+    if command -v readlink >/dev/null 2>&1; then
+        readlink -f -- "$p" 2>/dev/null && return 0
+    fi
+    if command -v realpath >/dev/null 2>&1; then
+        realpath -- "$p" 2>/dev/null && return 0
+    fi
+    if [[ -d "$p" ]]; then
+        (cd -- "$p" && pwd -P)
+    else
+        (cd -- "$(dirname -- "$p")" && printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$p")")
+    fi
+}
+
+safe_clear_mount_dir() {
+    local d="$1"
+    case "$d" in
+        /mnt|/mnt/boot/efi) ;;
+        *) return 1 ;;
+    esac
+    [[ -d "$d" ]] || return 1
+    find "$d" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+    return 0
+}
+
 #-------------------------------------------------------------------------------
 # Root-Rechte: eine einzige sudo-Abfrage gilt fuer ALLE Tools im Menue
 #-------------------------------------------------------------------------------
@@ -491,6 +517,13 @@ require_root() {
     local resume="${1:-}"
     if [[ "$EUID" -eq 0 ]]; then
         return 0
+    fi
+    if [[ "$resume" =~ ^[0-9]+$ ]]; then
+        local resume_idx=$((10#$resume - 1))
+        if (( resume_idx >= 0 && resume_idx < ${#DIST_ORDER[@]} )) &&
+           [[ "${DIST_ORDER[resume_idx]}" == alpine ]]; then
+            return 0
+        fi
     fi
     if ! command -v sudo >/dev/null 2>&1; then
         err "$(t e_nosudo)"
@@ -531,10 +564,16 @@ require_root() {
         exec_args+=("${ORIG_ARGS[i]}")
         i=$((i + 1))
     done
-    if [[ -n "$resume" ]]; then
-        exec sudo bash "$SELF" "${exec_args[@]+"${exec_args[@]}"}" --resume "$resume"
+    local self_real
+    self_real="$(canonical_path "$SELF")" || self_real="$SELF"
+    if [[ ! -f "$self_real" ]]; then
+        err "FEHLER: Skriptpfad konnte nicht verifiziert werden: $SELF"
+        return 1
     fi
-    exec sudo bash "$SELF" "${exec_args[@]+"${exec_args[@]}"}"
+    if [[ -n "$resume" ]]; then
+        exec sudo -- /bin/bash -- "$self_real" "${exec_args[@]+"${exec_args[@]}"}" --resume "$resume"
+    fi
+    exec sudo -- /bin/bash -- "$self_real" "${exec_args[@]+"${exec_args[@]}"}"
 }
 
 # Gewaehlte Menue-Nummer starten (nach require_root)
@@ -625,7 +664,9 @@ main_menu() {
             0|00) ok "$(t bye)"; exit 0 ;;
             ''|*[!0-9]*) err "$(t e_input)"; continue ;;
             *)    if (( choice >= 1 && choice <= ${#DIST_ORDER[@]} )); then
-                      require_root "$choice" || continue
+                      if [[ "${DIST_ORDER[choice - 1]}" != alpine ]]; then
+                          require_root "$choice" || continue
+                      fi
                       start_selection "$choice"
                   else
                       err "$(t e_choice)"
@@ -685,7 +726,7 @@ exit 0
 #@@@SCRIPT:ubuntu/ubuntulive-tool@@@
 #!/usr/bin/env bash
 #
-# ubuntulive-tool 3.4 - Ubuntu-Live-ISO bauen + gebootetes Live-System installieren
+# ubuntulive-tool 3.6 - Ubuntu-Live-ISO bauen + gebootetes Live-System installieren
 #                       + interaktiver Partitionierer (sfdisk-Basis)
 #
 # Zweck:
@@ -727,7 +768,7 @@ exit 0
 #
 set -euo pipefail
 
-VERSION="3.5"
+VERSION="3.6"
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || true)"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$0"
@@ -1345,6 +1386,8 @@ oder eine MBR-Tabelle verwenden." "$1" ;;
     inst_mounting:*)  printf '%s\n' "Mounte Zielsystem..." ;;
     err_inst_mnt_mounted:EN) printf '%s\n' "/mnt is already mounted - please reboot the live system." ;;
     err_inst_mnt_mounted:*)  printf '%s\n' "/mnt ist bereits eingehängt - bitte Live-System neu starten." ;;
+    err_inst_mnt_invalid:EN) printf '%s\n' "Refusing to clear /mnt or /mnt/boot/efi because the target path is not an allowed installation mount." ;;
+    err_inst_mnt_invalid:*)  printf '%s\n' "Leeren von /mnt oder /mnt/boot/efi verweigert: Pfad ist kein erlaubter Installations-Mount." ;;
     inst_clean_mnt:EN) printf '%s\n' "Cleaning leftovers in /mnt..." ;;
     inst_clean_mnt:*)  printf '%s\n' "Räume Reste in /mnt weg..." ;;
     err_inst_root_mount:EN) printf '%s\n' "Root partition could not be mounted." ;;
@@ -1963,11 +2006,17 @@ invoking_home() {
 
 require_root() {
     if [[ "$EUID" -ne 0 ]]; then
+        local self_real
+        self_real="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || realpath -- "$SCRIPT_PATH" 2>/dev/null || printf '%s\n' "$SCRIPT_PATH")"
+        if [[ ! -f "$self_real" ]]; then
+            err "FEHLER: Skriptpfad konnte nicht verifiziert werden: $SCRIPT_PATH"
+            return 1
+        fi
         txt "$(t info_requesting_root)"
         # Zusatzargumente (z. B. --action <funktion>) durchreichen: nach dem
         # Root-Wechsel wird die GEWAEHLTE Aktion direkt ausgefuehrt, ohne
         # erneutes Menue (Regel Nutzer).
-        exec sudo bash "$SCRIPT_PATH" "${ORIG_ARGS[@]}" "$@"
+        exec sudo -- /bin/bash -- "$self_real" "${ORIG_ARGS[@]}" "$@"
     fi
 }
 
@@ -2665,6 +2714,10 @@ run_action() {
     if [[ "$status" -eq 42 ]]; then
         # 00-Signal: gesamtes Skript SOFORT beenden
         exit 42
+    fi
+    if [[ "$status" -eq 43 ]]; then
+        # Erfolgreiche Installation: Abschlussanzeige stehen lassen und beenden.
+        exit 0
     fi
     if [[ "$status" -ne 0 ]]; then
         err "$(t err_action_failed)"
@@ -3751,7 +3804,7 @@ do_install() {
     umount /mnt/boot 2>/dev/null || true
     if [[ -n "$(ls -A /mnt 2>/dev/null || true)" ]]; then
         misc "$(t inst_clean_mnt)"
-        find /mnt -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+        safe_clear_mount_dir "/mnt" || die "$(t err_inst_mnt_invalid)"
     fi
 
     mount "$ROOT_PART" /mnt || die "$(t err_inst_root_mount)"
@@ -3783,7 +3836,7 @@ do_install() {
     unsquashfs -no-progress -f -d /mnt "$SQUASH" || die "$(t err_inst_unsquash)"
 
     if [[ -n "$ESP_PART" ]]; then
-        rm -rf -- /mnt/boot/efi
+        safe_clear_mount_dir "/mnt/boot/efi" || die "$(t err_inst_mnt_invalid)"
         mkdir -p /mnt/boot/efi
         mount "$ESP_PART" /mnt/boot/efi || die "$(t err_inst_esp_mount)"
         ESP_MOUNTED="yes"
@@ -3799,7 +3852,7 @@ do_install() {
 
     if [[ "$PART_MODE" == "no" && -d /mnt/boot/efi ]]; then
         misc "$(t inst_remove_bootloader)"
-        find /mnt/boot/efi -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+        safe_clear_mount_dir "/mnt/boot/efi" || die "$(t err_inst_mnt_invalid)"
     fi
 
     txt "$(t inst_checking_kernel)"
@@ -4050,7 +4103,9 @@ install_interactive() {
             case "$MENU_NR" in
                 1)
                     if choose_install_target; then
-                        do_install
+                        if do_install; then
+                            return 43
+                        fi
                     fi ;;
                 2) show_targets ;;
                 3) part_menu ;;
@@ -6053,7 +6108,7 @@ fi
 #@@@SCRIPT:debian/debianlive-tool@@@
 #!/usr/bin/env bash
 #
-# debianlive-tool 1.5 - Debian-Live-ISO bauen + gebootetes Live-System
+# debianlive-tool 1.7 - Debian-Live-ISO bauen + gebootetes Live-System
 # installieren (Debian-Fork von debianlive-tool 3.1: live-boot wurde durch
 # live-boot/live-config/live-tools ersetzt - Kernel-Parameter boot=live,
 # ISO-Ordner /live/, Live-Autologin ueber live-config-Boot-Parameter)
@@ -6098,7 +6153,7 @@ fi
 #
 set -euo pipefail
 
-VERSION="1.6"
+VERSION="1.7"
 SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || true)"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$0"
@@ -6716,6 +6771,8 @@ oder eine MBR-Tabelle verwenden." "$1" ;;
     inst_mounting:*)  printf '%s\n' "Mounte Zielsystem..." ;;
     err_inst_mnt_mounted:EN) printf '%s\n' "/mnt is already mounted - please reboot the live system." ;;
     err_inst_mnt_mounted:*)  printf '%s\n' "/mnt ist bereits eingehängt - bitte Live-System neu starten." ;;
+    err_inst_mnt_invalid:EN) printf '%s\n' "Refusing to clear /mnt or /mnt/boot/efi because the target path is not an allowed installation mount." ;;
+    err_inst_mnt_invalid:*)  printf '%s\n' "Leeren von /mnt oder /mnt/boot/efi verweigert: Pfad ist kein erlaubter Installations-Mount." ;;
     inst_clean_mnt:EN) printf '%s\n' "Cleaning leftovers in /mnt..." ;;
     inst_clean_mnt:*)  printf '%s\n' "Räume Reste in /mnt weg..." ;;
     err_inst_root_mount:EN) printf '%s\n' "Root partition could not be mounted." ;;
@@ -7334,11 +7391,17 @@ invoking_home() {
 
 require_root() {
     if [[ "$EUID" -ne 0 ]]; then
+        local self_real
+        self_real="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || realpath -- "$SCRIPT_PATH" 2>/dev/null || printf '%s\n' "$SCRIPT_PATH")"
+        if [[ ! -f "$self_real" ]]; then
+            err "FEHLER: Skriptpfad konnte nicht verifiziert werden: $SCRIPT_PATH"
+            return 1
+        fi
         txt "$(t info_requesting_root)"
         # Zusatzargumente (z. B. --action <funktion>) durchreichen: nach dem
         # Root-Wechsel wird die GEWAEHLTE Aktion direkt ausgefuehrt, ohne
         # erneutes Menue (Regel Nutzer).
-        exec sudo bash "$SCRIPT_PATH" "${ORIG_ARGS[@]}" "$@"
+        exec sudo -- /bin/bash -- "$self_real" "${ORIG_ARGS[@]}" "$@"
     fi
 }
 
@@ -9122,7 +9185,7 @@ do_install() {
     umount /mnt/boot 2>/dev/null || true
     if [[ -n "$(ls -A /mnt 2>/dev/null || true)" ]]; then
         misc "$(t inst_clean_mnt)"
-        find /mnt -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+        safe_clear_mount_dir "/mnt" || die "$(t err_inst_mnt_invalid)"
     fi
 
     mount "$ROOT_PART" /mnt || die "$(t err_inst_root_mount)"
@@ -9154,7 +9217,7 @@ do_install() {
     unsquashfs -no-progress -f -d /mnt "$SQUASH" || die "$(t err_inst_unsquash)"
 
     if [[ -n "$ESP_PART" ]]; then
-        rm -rf -- /mnt/boot/efi
+        safe_clear_mount_dir "/mnt/boot/efi" || die "$(t err_inst_mnt_invalid)"
         mkdir -p /mnt/boot/efi
         mount "$ESP_PART" /mnt/boot/efi || die "$(t err_inst_esp_mount)"
         ESP_MOUNTED="yes"
@@ -9170,7 +9233,7 @@ do_install() {
 
     if [[ "$PART_MODE" == "no" && -d /mnt/boot/efi ]]; then
         misc "$(t inst_remove_bootloader)"
-        find /mnt/boot/efi -mindepth 1 -maxdepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+        safe_clear_mount_dir "/mnt/boot/efi" || die "$(t err_inst_mnt_invalid)"
     fi
 
     txt "$(t inst_checking_kernel)"
@@ -11435,7 +11498,7 @@ fi
 #@@@SCRIPT:arch/archlive-tool@@@
 #!/usr/bin/env bash
 #
-# archlive-tool 3.3 - Live-ISO bauen + gebootetes Live-System installieren
+# archlive-tool 3.4 - Live-ISO bauen + gebootetes Live-System installieren
 #                     + interaktiver Partitionierer (sfdisk-Basis)
 #
 # Zweck:
@@ -11475,7 +11538,7 @@ fi
 #
 set -euo pipefail
 
-VERSION="3.3"
+VERSION="3.4"
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar);
 # per Umgebungsvariablen ueberschreibbar.
 SCRIPT_NAME="${ARCHLIVE_SELF_NAME:-$(basename -- "$0")}"
@@ -12512,8 +12575,14 @@ invoking_home() {
 
 require_root() {
     if [[ "$EUID" -ne 0 ]]; then
+        local self_real
+        self_real="$(readlink -f -- "$SCRIPT_PATH" 2>/dev/null || realpath -- "$SCRIPT_PATH" 2>/dev/null || printf '%s\n' "$SCRIPT_PATH")"
+        if [[ ! -f "$self_real" ]]; then
+            err "FEHLER: Skriptpfad konnte nicht verifiziert werden: $SCRIPT_PATH"
+            return 1
+        fi
         txt "$(t info_requesting_root)"
-        exec sudo bash "$SCRIPT_PATH" "${ORIG_ARGS[@]}"
+        exec sudo -- /bin/bash -- "$self_real" "${ORIG_ARGS[@]}"
     fi
 }
 
@@ -13121,6 +13190,10 @@ run_action() {
     if [[ "$status" -eq 42 ]]; then
         # 00-Signal: gesamtes Skript SOFORT beenden
         exit 42
+    fi
+    if [[ "$status" -eq 43 ]]; then
+        # Erfolgreiche Installation: Mount-Traps ausführen und das Tool beenden.
+        exit 0
     fi
     if [[ "$status" -ne 0 ]]; then
         err "$(t err_action_failed)"
@@ -14554,7 +14627,9 @@ install_interactive() {
             case "$MENU_NR" in
                 1)
                     if choose_install_target; then
-                        do_install
+                        if do_install; then
+                            return 43
+                        fi
                     fi ;;
                 2) show_targets ;;
                 3) part_menu ;;
@@ -15868,7 +15943,7 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROG="$(basename -- "$0")"
-VERSION="2.9"
+VERSION="3.0"
 
 # ==================== SPRACHE / OPTIONEN ====================
 # Sprache aller eigenen Meldungen: AUTO (Systemsprache, Voreinstellung),
@@ -16158,7 +16233,7 @@ set -eu
 
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROGRAM="$(basename -- "$0")"
-VERSION=2.9
+VERSION=3.0
 
 ALPE_ROOT="${ALPE_ROOT:-/}"
 ALPE_EXTRA_REPOS="${ALPE_EXTRA_REPOS:-}"
@@ -16599,19 +16674,24 @@ if [ -n "$BRANCH" ]; then
 	esac
 fi
 
-# Root-Rechte: wenn nicht root, das Skript DIREKT per sudo/su als root neu
-# starten (sudo fragt selbst nach dem Passwort) - noetig, wenn das Skript
+# Root-Rechte: wenn nicht root, das Skript DIREKT per doas/su als root neu
+# starten - noetig, wenn das Skript
 # z. B. aus einem Menue heraus als normaler Benutzer gestartet wurde
 if [ "$(id -u)" -ne 0 ]; then
-	if [ "${MKALPE_SUDO_ASKED:-0}" = "1" ]; then
-		# Fehlkonfiguration: sudo lief keine echte Root-Shell -> Abbruch statt Endlosschleife
+	if [ "${MKALPE_DOAS_ASKED:-0}" = "1" ]; then
+		# Fehlkonfiguration: doas lief keine echte Root-Shell -> Abbruch statt Endlosschleife
 		td err_not_root
 	fi
-	if command -v sudo >/dev/null 2>&1; then
-		exec sudo env MKALPE_SUDO_ASKED=1 sh "$0"
+	self_real=$(readlink -f -- "$0" 2>/dev/null || realpath -- "$0" 2>/dev/null || printf '%s\n' "$0")
+	if [ ! -f "$self_real" ]; then
+		td err_not_root
+	fi
+	if command -v doas >/dev/null 2>&1; then
+		exec doas env MKALPE_DOAS_ASKED=1 /bin/sh -- "$self_real" "$@"
 	else
-		# Alpine lebt oft ohne sudo - Rueckfallebene su
-		exec su root -c "MKALPE_SUDO_ASKED=1 sh '$0'"
+		# Alpine-Systeme ohne doas: Rueckfallebene su
+		cmd_args=$(printf '%q ' "$@")
+		exec su root -c "env -i PATH='${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}' HOME='${HOME:-/root}' MKALPE_DOAS_ASKED=1 /bin/sh '$self_real' $cmd_args"
 	fi
 fi
 [ -f "$ALPE_ROOT/etc/alpine-release" ] || td err_not_alpine "$ALPE_ROOT"
@@ -17603,8 +17683,8 @@ t() {
 	info_swap_part:*)  printf '%s\n' "Swap-Partition:" ;;
 	info_swap_auto:EN) printf 'Existing swap partition chosen automatically: %s.\n'  "$1" ;;
 	info_swap_auto:*) printf 'Vorhandene Swap-Partition automatisch gewaehlt: %s.\n'  "$1" ;;
-	q_swap_create:EN) printf '%s\n' 'Create swap? [Y/n]: ' ;;
-	q_swap_create:*)  printf '%s\n' 'Swap anlegen? [J/n]: ' ;;
+	q_swap_create:EN) printf '%s\n' 'Create swap? [y/N]: ' ;;
+	q_swap_create:*)  printf '%s\n' 'Swap anlegen? [j/N]: ' ;;
 	q_swap_size:EN) printf '%s\n' 'Swap size in MB ("auto" = automatic, empty = auto): ' ;;
 	q_swap_size:*)  printf '%s\n' 'Swap-Groesse in MB ("auto" = automatisch, leer = auto): ' ;;
 	q_swapfile:EN) printf '%s\n' 'Create a swap file on the root partition? [y/N]: ' ;;
@@ -17796,18 +17876,23 @@ done
 
 # ------------------------------------------------------------- Voraussetzungen --
 
-# Root-Rechte: wenn nicht root, das Skript DIREKT per sudo/su als root neu
-# starten (sudo fragt selbst nach dem Passwort) - kein Abbruch, keine Nachfrage
+# Root-Rechte: wenn nicht root, das Skript DIREKT per doas/su als root neu
+# starten - kein Abbruch, keine Nachfrage
 if [ "$(id -u)" -ne 0 ]; then
-	if [ "${ALPE_SUDO_ASKED:-0}" = "1" ]; then
-		# Fehlkonfiguration: sudo lief keine echte Root-Shell -> Abbruch statt Endlosschleife
+	if [ "${ALPE_DOAS_ASKED:-0}" = "1" ]; then
+		# Fehlkonfiguration: doas lief keine echte Root-Shell -> Abbruch statt Endlosschleife
 		td err_not_root
 	fi
-	if command -v sudo >/dev/null 2>&1; then
-		exec sudo env ALPE_SUDO_ASKED=1 sh "$0"
+	self_real=$(readlink -f -- "$0" 2>/dev/null || realpath -- "$0" 2>/dev/null || printf '%s\n' "$0")
+	if [ ! -f "$self_real" ]; then
+		td err_not_root
+	fi
+	if command -v doas >/dev/null 2>&1; then
+		exec doas env ALPE_DOAS_ASKED=1 /bin/sh -- "$self_real" "$@"
 	else
-		# Alpine lebt oft ohne sudo - Rueckfallebene su
-		exec su root -c "ALPE_SUDO_ASKED=1 sh '$0'"
+		# Alpine-Systeme ohne doas: Rueckfallebene su
+		cmd_args=$(printf '%q ' "$@")
+		exec su root -c "env -i PATH='${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}' HOME='${HOME:-/root}' ALPE_DOAS_ASKED=1 /bin/sh '$self_real' $cmd_args"
 	fi
 fi
 command -v setup-disk >/dev/null 2>&1 \
@@ -18203,9 +18288,9 @@ if [ "$MODE" = disk ]; then
 		td err_boot_medium "$TARGET"
 	fi
 
-	# Swap nur auf Wunsch (interaktiv per J/n, Standard J)
+	# Swap nur auf ausdruecklichen Wunsch (interaktiv per j/N, Standard N)
 	if [ -z "$SWAP" ]; then
-		if [ "$IS_TTY" = yes ] && ask_yn "$(t q_swap_create)" j; then
+		if [ "$IS_TTY" = yes ] && ask_yn "$(t q_swap_create)" n; then
 			print_text_n "$(t q_swap_size)"
 			read -r s_ans || s_ans=
 			SWAP=${s_ans:-auto}
@@ -18415,6 +18500,53 @@ fi
 
 # ------------------------------------------------------------- Installation --
 
+# setup-disk installiert aus dem lokalen /apks-Repository des Live-Systems.
+# Dieses Repository wird waehrenddessen unter den Paket-Tags eingebunden.
+run_setup_disk_with_tagged_local_repo() {
+	local repo_file=/etc/apk/repositories repo_backup repo_tmp repo_url
+	local pkg tag rc
+	[ -r "$repo_file" ] || { "$@"; return $?; }
+	[ -r /etc/apk/world ] || return 1
+	repo_backup=$(mktemp) || return 1
+	repo_tmp=$(mktemp) || { rm -f "$repo_backup"; return 1; }
+	if ! cp "$repo_file" "$repo_backup" || ! cp "$repo_file" "$repo_tmp"; then
+		rm -f "$repo_backup" "$repo_tmp"
+		return 1
+	fi
+	while IFS= read -r pkg; do
+		case "$pkg" in
+		*@*) tag=${pkg##*@}; tag=${tag%%=*} ;;
+		*) continue ;;
+		esac
+		case "$tag" in ""|*[!A-Za-z0-9._-]*) continue ;; esac
+		while read -r repo_url _; do
+			case "$repo_url" in
+			/media/*|file:///media/*) ;;
+			*) continue ;;
+			esac
+			if ! grep -Fqx "@$tag $repo_url" "$repo_tmp"; then
+				printf '@%s %s\n' "$tag" "$repo_url" >> "$repo_tmp" || {
+					rm -f "$repo_backup" "$repo_tmp"
+					return 1
+				}
+			fi
+		done < "$repo_backup"
+	done < /etc/apk/world
+	if ! cat "$repo_tmp" > "$repo_file"; then
+		cat "$repo_backup" > "$repo_file" || :
+		rm -f "$repo_backup" "$repo_tmp"
+		return 1
+	fi
+	rc=0
+	"$@" || rc=$?
+	if ! cat "$repo_backup" > "$repo_file"; then
+		rm -f "$repo_backup" "$repo_tmp"
+		return 1
+	fi
+	rm -f "$repo_backup" "$repo_tmp"
+	return "$rc"
+}
+
 if [ "$MODE" = disk ]; then
 	print_heading "$(t ph_install_disk "$TARGET")"
 	case "$SWAP" in
@@ -18424,7 +18556,8 @@ if [ "$MODE" = disk ]; then
 	esac
 	# ERASE_DISKS unterdrueckt die Loesch-Rueckfrage von setup-disk
 	# shellcheck disable=SC2086
-	ERASE_DISKS="$TARGET" setup-disk -m sys $SWAP_ARGS "$TARGET" \
+	run_setup_disk_with_tagged_local_repo env ERASE_DISKS="$TARGET" \
+		setup-disk -m sys $SWAP_ARGS "$TARGET" \
 		|| td err_setup_disk
 	t_mounted=
 else
@@ -18483,7 +18616,8 @@ else
 	# variable erzwungen (setup-disk hat dafuer keine Kommandozeilen-
 	# Option); bei UEFI installiert setup-disk grub selbst auf die ESP.
 	# shellcheck disable=SC2086
-	BOOTLOADER=grub setup-disk -m sys "$MNT" \
+	run_setup_disk_with_tagged_local_repo env BOOTLOADER=grub \
+		setup-disk -m sys "$MNT" \
 		|| td err_setup_disk
 
 	# setup-disk schreibt im Mounted-Root-Modus keinen MBR (es warnt
@@ -18598,7 +18732,7 @@ emit_part() {
 #   - Paket-Nachinstall ueber apk (statt pacman), Paket-Check mit
 #     'apk info -e'.
 #   - udevadm ist optional (safe_settle faengt fehlendes udev ab).
-#   - sudo-Neustart: sudo, falls vorhanden, sonst su.
+#   - doas-Neustart: doas, falls vorhanden, sonst su.
 #   - Test-Hook: ALT_INCLUDE_LOOP=1 zeigt auch loop/zram/ram/sr/dm/md-
 #     Geraete (nur fuer Tests in Containern; Standard bleibt gefiltert).
 # Enthaelt dieselben Funktionen wie der Partitionierer-Bereich von
@@ -18617,7 +18751,7 @@ set -eu
 # Anzeigename = tatsaechlicher Dateiname (umbenennbar)
 PROG="$(basename -- "$0")"
 # Absoluter Pfad dieses Skripts (set -u: von Anfang an gesetzt; noetig fuer
-# den sudo-Neustart in require_root, da sudo das Arbeitsverzeichnis wechselt)
+# den doas-Neustart in require_root, da doas das Arbeitsverzeichnis wechselt)
 SCRIPT_PATH="$(readlink -f -- "$0" 2>/dev/null || printf '%s' "$0")"
 
 # ==================== SPRACHE / LANGUAGE ====================
@@ -18730,12 +18864,12 @@ t() {
     menu_bad:*) printf "Ungültige Auswahl '%s' - bitte eine Zahl aus der Liste (0 = Zurück).\n"  "$1" ;;
     warn_nonroot_test:EN) printf '%s\n' "ALT_ALLOW_NONROOT=1: root check bypassed (test mode)." ;;
     warn_nonroot_test:*)  printf '%s\n' "ALT_ALLOW_NONROOT=1: Root-Prüfung übergangen (Testmodus)." ;;
-    err_sudo_failed:EN) printf '%s\n' "sudo did not provide root privileges (wrong password?). Operation aborted." ;;
-    err_sudo_failed:*)  printf '%s\n' "sudo hat keine Root-Rechte geliefert (Passwort falsch?). Vorgang abgebrochen." ;;
+    err_doas_failed:EN) printf '%s\n' "doas did not provide root privileges. Operation aborted." ;;
+    err_doas_failed:*)  printf '%s\n' "doas hat keine Root-Rechte geliefert. Vorgang abgebrochen." ;;
     info_need_root:EN) printf '%s\n' "Write operations require root privileges." ;;
     info_need_root:*)  printf '%s\n' "Für Schreibzugriffe werden Root-Rechte benötigt." ;;
-    q_sudo_restart:EN) printf '%s\n' "Restart now with root privileges via sudo?" ;;
-    q_sudo_restart:*)  printf '%s\n' "Jetzt per sudo mit Root-Rechten neu starten?" ;;
+    q_doas_restart:EN) printf '%s\n' "Restart now with root privileges via doas?" ;;
+    q_doas_restart:*)  printf '%s\n' "Jetzt per doas mit Root-Rechten neu starten?" ;;
     err_need_real_root:EN) printf '%s\n' "Partitioning needs REAL root privileges - aborted (no read-only mode anymore)." ;;
     err_need_real_root:*)  printf '%s\n' "Partitionieren braucht ECHTE Root-Rechte - abgebrochen (kein Nur-Lese-Modus mehr)." ;;
     err_no_devices:EN) printf '%s\n' "No suitable devices found." ;;
@@ -18985,7 +19119,7 @@ te() { t "$@" >&2; }
 #   Überschriften 1;96 - Text 1;93 - Dateien/Befehle 1;35 - Rest 1;92 - Fehler 1;91
 # Farb-Ausgabe nur bei interaktivem Terminal (stdout ist ein TTY) und ohne
 # NO_COLOR; das Flag -nc setzt NO_COLOR (VOR dieser Pruefung geparst).
-# ALT_FORCE_COLOR=1 erzwingt Farben (z. B. nach dem sudo-Neustart).
+# ALT_FORCE_COLOR=1 erzwingt Farben (z. B. nach dem doas-Neustart).
 COLOR_ON=0
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
     COLOR_ON=1
@@ -19158,21 +19292,21 @@ require_root() {
         warn_ "$(t warn_nonroot_test)"
         return 0
     fi
-    if [ "${ALT_ASKED_SUDO:-0}" = "1" ]; then
-        err_ "$(t err_sudo_failed)"
+    if [ "${ALT_ASKED_DOAS:-0}" = "1" ]; then
+        err_ "$(t err_doas_failed)"
         return 1
     fi
-    # DIREKT per sudo/su als root neu starten (sudo fragt selbst nach dem
-    # Passwort) - keine Nachfrage, kein Abbruch
+    # DIREKT per doas/su als root neu starten - keine Nachfrage, kein Abbruch
     local col=0
     if [ -t 1 ]; then
         col=1
     fi
-    if command -v sudo >/dev/null 2>&1; then
-        exec sudo env ALT_ASKED_SUDO=1 ALT_FORCE_COLOR="$col" sh "$SCRIPT_PATH"
+    if command -v doas >/dev/null 2>&1; then
+        exec doas env ALT_ASKED_DOAS=1 ALT_FORCE_COLOR="$col" /bin/sh -- "$SCRIPT_PATH" "$@"
     else
-        # Alpine lebt oft ohne sudo - Rückfallebene su
-        exec su root -c "ALT_ASKED_SUDO=1 ALT_FORCE_COLOR=$col sh '$SCRIPT_PATH'"
+        # Alpine-Systeme ohne doas: Rückfallebene su
+        cmd_args=$(printf '%q ' "$@")
+        exec su root -c "env -i PATH='${PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}' HOME='${HOME:-/root}' ALT_ASKED_DOAS=1 ALT_FORCE_COLOR=$col /bin/sh '$SCRIPT_PATH' $cmd_args"
     fi
 }
 
@@ -20240,7 +20374,7 @@ ${C_HEAD}$PROG (Alpine-Partitionierer) $VERSION - Partitionen anlegen/loeschen/f
 
 ${C_MISC}Interaktiv: Festplatte waehlen, dann Tabellen (GPT/MBR), Partitionen
 (Zweck-Presets, Groesse, Position), Loeschen, Formatieren, Flags.
-0 = immer zurueck. Benoetigt echte Root-Rechte (sudo-Neustart).${C_R}
+0 = immer zurueck. Benoetigt echte Root-Rechte (doas-Neustart).${C_R}
 
 ${C_TEXT}Optionen: ${C_FILE}-h${C_TEXT} Hilfe, ${C_FILE}-V${C_TEXT} Version, ${C_FILE}-de/-en${C_TEXT} Sprache, ${C_FILE}-nc${C_TEXT} Farben aus.${C_R}
 HILFE
@@ -20287,8 +20421,8 @@ trap 'exit 129' HUP
 
 parse_args "$@"
 # Root-Rechte sind Pflicht: das Skript startet IMMER als root - dafuer wird es
-# beim Start DIREKT per sudo/su neu gestartet (sudo fragt selbst nach dem
-# Passwort), bevor irgendetwas anderes laeuft. Kein Menue-Neustart noetig,
+# beim Start DIREKT per doas/su neu gestartet, bevor irgendetwas anderes
+# laeuft. Kein Menue-Neustart noetig,
 # denn das Menue geht bereits als root auf.
 require_root || exit 1
 part_menu
@@ -20345,7 +20479,7 @@ esac
 
 set -Eeuo pipefail
 
-VERSION="6.5"
+VERSION="7.2"
 PROGRAM_NAME="$(basename "${CLONIE_ORIG_ARG0:-$0}")"
 BLOCK_SIZE="16M"
 
@@ -20384,6 +20518,18 @@ s|Ungültige Auswahl.|Invalid selection.|
 s|Ziele für die Quellpartitionen (aufsteigend: |Targets for the source partitions (ascending: |
 s|) angeben.|) – enter them.|
 s|Dateisystem nicht unterstützt|filesystem not supported|
+s|Partclone nicht verfügbar für |Partclone is unavailable for |
+s|; sichere die Partition mit dd (gesamte Partition).|; backing up the full partition with dd.|
+s|Partclone unterstützt Dateisystem |Partclone does not support filesystem |
+s|Imaging-Verfahren wählen:|Select imaging method:|
+s|Partclone – nur belegte Dateisystemblöcke|Partclone – used filesystem blocks only|
+s|dd – gesamte Partition inklusive freier Bereiche|dd – entire partition including free space|
+s|Partclone unterstützt ein oder mehrere ausgewählte Dateisysteme nicht; nur dd ist verfügbar.|Partclone does not support one or more selected filesystems; only dd is available.|
+s|Partitions-Images: Partclone oder dd auswählbar (wo unterstützt)|Partition images: choose Partclone or dd (where supported)|
+s|nicht unterstützte Dateisysteme sind nur mit dd sicherbar|unsupported filesystems can only be backed up with dd|
+s|Kein passendes Partclone-Werkzeug für Dateisystem |No matching Partclone tool for filesystem |
+s|Image-Format nicht unterstützt: |Unsupported image format: |
+s|Partitions-Image wird mit Partclone wiederhergestellt.|Restoring partition image with Partclone.|
 s|– Festplatten/Partitionen klonen, imagen, recovern|– clone, image and recover disks/partitions|
 s|Verwendung:|Usage:|
 s|interaktives Menü|interactive menu|
@@ -20397,7 +20543,9 @@ s|- Festplatte/Partition 1:1 klonen (Disk-zu-Disk)|- Clone disk/partition 1:1 (d
 s|- Image erstellen (zstd multithreaded, xz/gzip-Fallback)|- Create image (zstd multithreaded, xz/gzip fallback)|
 s|- Image zurückspielen inkl. SHA-256-Prüfung; Einzel- und|- Restore image incl. SHA-256 check; single and|
 s|Partitions-Images (.tar) werden automatisch erkannt|partition images (.tar) are detected automatically|
-s|- Multi-Restore: ALLE Ziele in einer Eingabe wählen|- Multi-restore: select ALL targets in one entry|
+s|  - Partitions-Images: Partclone sichert nur belegte Blöcke (wo unterstützt)|  - Partition images: Partclone saves used blocks (where supported)|
+s|    nicht unterstützte Dateisysteme werden vollständig mit dd gesichert|    unsupported filesystems are backed up fully with dd|
+s|Partitions-Image wiederherstellen: ALLE Ziele in einer Eingabe wählen|- Restore partition image: select ALL targets in one entry|
 s|(z. B. 1,3 oder 1-4), zugeordnet in der Reihenfolge der|(e.g. 1,3 or 1-4), assigned in the order of the|
 s|    Quellpartitionen"|    source partitions"|
 s|- Partition(en) sichern: eine oder mehrere am gleichen|- Back up partition(s): one or several at the same|
@@ -20419,7 +20567,7 @@ s|verifiziert, BEVOR das Ziel überschrieben wird|BEFORE the target is overwritt
 s|- Festplatten erneut einlesen (Hauptmenü): Datenträgerliste|- Re-read disks (main menu): refresh volume list|
 s|mit Einhäng-Status nach dem Start auffrischen|with mount status after start|
 s|- Ziel anpassen nach Klonen auf größere Platte|- Adjust target after cloning to a larger disk|
-s|- Menü-Steuerung: 0 = zurück, 00 = beenden, 000 = abbrechen|- Menu control: 0 = back, 00 = quit, 000 = abort|
+s|- Menü-Steuerung: 0 = zurück, 00 = beenden|- Menu control: 0 = back, 00 = quit|
 s|(auch in Freitext-Prompts; falsche/leere Pfadangaben|(also in free-text prompts; wrong/empty path entries|
 s|werden erneut gefragt statt abzubrechen)|are asked again instead of aborting)|
 s|Arch, Ubuntu/Debian (automatische Paket-Installation)|Arch, Ubuntu/Debian (automatic package installation)|
@@ -20453,8 +20601,8 @@ s|apk-Installation fehlgeschlagen.|apk installation failed.|
 s|Kein unterstützter Paketmanager (|No supported package manager (|
 s|Bitte manuell installieren: |Please install manually: |
 s|Weder zstd, xz noch gzip gefunden – keine Kompression möglich.|Neither zstd, xz nor gzip found – compression impossible.|
-s|Auswahl (0 = zurück, 00 = beenden, 000 = abbrechen): |Selection (0 = back, 00 = quit, 000 = abort): |
-s|Ziele (0 = zurück, 00 = beenden, 000 = abbrechen): |Targets (0 = back, 00 = quit, 000 = abort): |
+s|Auswahl (0 = zurück, 00 = beenden): |Selection (0 = back, 00 = quit): |
+s|Ziele (0 = zurück, 00 = beenden): |Targets (0 = back, 00 = quit): |
 s|Auswahl \[Enter = |Selection [Enter = |
 s|Auswahl: |Selection: |
 s|:-leer}|:-empty}|
@@ -20515,7 +20663,7 @@ s|Keine Partitionen gefunden (|No partitions found (|
 s|Partition wählen (|Select partition (|
 s|Partition(en) wählen (|Select partition(s) (|
 s|\[kein FS\]|[no FS]|
-s|Mehrere werden in EIN Image gesichert und daraus einzeln wiederherstellbar.|Several are saved into ONE image and individually restorable from it.|
+s|Mehrere werden in EIN Image gesichert und können daraus einzeln wiederhergestellt werden.|Several are saved into ONE image and can be restored individually from it.|
 s|Mehrfachauswahl muss auf EINER Platte liegen – |Multi-selection must be on ONE disk – |
 s|liegt nicht auf |is not on |
 s|Bitte mehrere Platten einzeln sichern.|Please back up multiple disks one at a time.|
@@ -20535,8 +20683,10 @@ s|die Kopie wird der BitLocker-Wiederherstellungsschlüssel gebraucht.|copy requ
 s|MSR-/Recovery-Partitionen werden von der 1:1-Kopie erfasst.|MSR/recovery partitions are included in the 1:1 copy.|
 s|Kompression wählen:|Select compression:|
 s|zstd  Stufe 1  – schnellste Kompression, ideal für große Platten|zstd  level 1  – fastest compression, ideal for large disks|
-s|zstd  Stufe 3  – bester Kompromiss aus Tempo und Größe (Standard)|zstd  level 3  – best compromise of speed and size (default)|
-s|zstd  Stufe 19 – maximale Verdichtung, deutlich langsamer|zstd  level 19 – maximum compression, much slower|
+s|zstd  Stufe 6  – bester Kompromiss aus Tempo und Größe (Standard)|zstd  level 6  – best compromise of speed and size (default)|
+s|zstd  Stufe 1-19 – Kompressionsstufe selbst wählen|zstd  level 1-19 – choose compression level|
+s|zstd-Kompressionsstufe (1-19): |zstd compression level (1-19): |
+s|Bitte eine Kompressionsstufe von 1 bis 19 eingeben.|Please enter a compression level from 1 to 19.|
 s|xz    Stufe 6  – hohe Verdichtung, langsam (multithreaded)|xz    level 6  – high compression, slow (multithreaded)|
 s|gzip  Stufe 6  – klassisch, auf jedem System verfügbar|gzip  level 6  – classic, available on every system|
 s|ohne           – Rohkopie (.img), schnellstes Schreiben, größte Datei|none            – raw copy (.img), fastest write, largest file|
@@ -20584,9 +20734,9 @@ s|Image erfolgreich erstellt:|Image created successfully:|
 s|Image existiert bereits: |Image already exists: |
 s|Zielverzeichnis ist nicht beschreibbar: |Target directory is not writable: |
 s|  Image ZURÜCKSPIELEN (recover)|  RESTORE IMAGE (recover)|
-s|Mehrpartitions-Image erkannt – 'Image zurückspielen (recover)' routet .tar automatisch an den Multi-Restore.|Multi-partition image detected – 'Restore image (recover)' routes .tar to multi-restore automatically.|
+s|Partitions-Image erkannt – Wiederherstellung wird automatisch gestartet.|Partition image detected – the restore starts automatically.|
 s|Image zurückspielen (recover)|Restore image (recover)|
-s|Partitions-Image erkannt – Wiederherstellung läuft über den Multi-Restore.|Partition image detected – restore runs via multi-restore.|
+s|Partitions-Image erkannt – Wiederherstellung wird gestartet.|Partition image detected – starting restore.|
 s|Image nicht gefunden: |Image not found: |
 s|Prüfsumme wird geprüft ...|Verifying checksum ...|
 s|Prüfsumme von |Verifying checksum of |
@@ -20614,6 +20764,11 @@ s|  FESTPLATTE 1:1 KLONEN|  CLONE DISK 1:1|
 s|  PARTITION 1:1 KLONEN|  CLONE PARTITION 1:1|
 s|Festplatte 1:1 klonen|Clone disk 1:1|
 s|Partition 1:1 klonen|Clone partition 1:1|
+s|Festplatten Backup \(komprimiert\)|Disk backup (compressed)|
+s|Partitions Backup \(komprimiert\)|Partition backup (compressed)|
+s|Backup Wiederherstellen \(recover\)|Restore backup (recover)|
+s|Festplatten neu einlesen|Rescan disks|
+s|Image-Ordner wählen/wechseln|Choose/switch image folder|
 s|Zielplatte wird VOLLSTÄNDIG überschrieben!|Target disk will be COMPLETELY overwritten!|
 s|Zielpartition wird VOLLSTÄNDIG überschrieben!|Target partition will be COMPLETELY overwritten!|
 s|Quelle und Ziel sind identisch (|Source and target are identical (|
@@ -20687,10 +20842,10 @@ s|Anfügen von |Appending |
 s| an das Image fehlgeschlagen.| to the image failed.|
 s|Partitions-Image erfolgreich erstellt:|Partition image created successfully:|
 s|   Enthalten: |   Contains: |
-s|   Einzeln zurückspielbar über 'Partitions-Image (Multi) zurückspielen'.|   Individually restorable via 'Restore partition image (Multi)'.|
+s|   Einzeln wiederherstellbar über 'Backup Wiederherstellen (recover)'.|   Individually restorable via 'Restore backup (recover)'.|
 s|Quellplatte:  |Source disk:  |
-s|  PARTITIONS-IMAGE ZURÜCKSPIELEN (Multi)|  RESTORE PARTITION IMAGE (Multi)|
-s|Image enthält kein MANIFEST.txt – kein clonie-Mehrpartitions-Image?|Image contains no MANIFEST.txt – not a clonie multi-partition image?|
+s|  PARTITIONS-IMAGE WIEDERHERSTELLEN|  RESTORE PARTITION IMAGE|
+s|Image enthält kein MANIFEST.txt – kein gültiges clonie-Partitions-Image?|Image contains no MANIFEST.txt – not a valid clonie partition image?|
 s|Manifest listet keine Partitionen auf: |Manifest lists no partitions: |
 s|Partitions-Image enthält:|Partition image contains:|
 s|(ursprünglich |(originally |
@@ -20716,7 +20871,6 @@ s|Alle gewählten Partitionen wurden zurückgespielt.|All selected partitions we
 s|Image-Datei:  |Image file:  |
 s|clonie $VERSION – Festplatte/Partition/Image|clonie $VERSION – disk/partition/image|
 s|Aktion wählen:|Select action:|
-s|Eingabetaste fürs Hauptmenü ...|Press Enter for the main menu ...|
 s|kein Paketmanager|no package manager|
 s|Image-Ordner:  |Image dir:      |
 s|(nicht festgelegt)|(not set)|
@@ -20736,6 +20890,7 @@ s|Größe:  |Size:  |g
 s|Kompression:  |Compression:  |g
 s|Kompression|compression|g
 s|Verschlüsselung:|Encryption:|g
+s|Archivgröße: |Archive size: |g
 s|SHA-256-Prüfsumme|SHA-256 checksum|g
 s|Prüfsummenprüfung|checksum verification|g
 s|Prüfsumme: |Checksum: |g
@@ -20745,7 +20900,6 @@ s|Passwortprüfung|password verification|g
 s|Passwort|password|g
 s|Image-Datei|image file|g
 s|Wiederherstellungspfad|recovery path|
-s|Mehrpartitions-Image|multi-partition image|g
 s|Partitions-Image|partition image|g
 s|Sicherungsordner|backup directory|g
 s|Unterordner|subdirectory|g
@@ -20996,9 +21150,11 @@ usage() {
     print_text "Funktionen:"
     print_other "  - Festplatte/Partition 1:1 klonen (Disk-zu-Disk)"
     print_other "  - Image erstellen (zstd multithreaded, xz/gzip-Fallback)"
+    print_other "  - Partitions-Images: Partclone oder dd auswählbar (wo unterstützt)"
+    print_other "    nicht unterstützte Dateisysteme sind nur mit dd sicherbar"
     print_other "  - Image zurückspielen inkl. SHA-256-Prüfung; Einzel- und"
     print_other "    Partitions-Images (.tar) werden automatisch erkannt"
-    print_other "  - Multi-Restore: ALLE Ziele in einer Eingabe wählen"
+    print_other "  - Partitions-Image wiederherstellen: ALLE Ziele in einer Eingabe wählen"
     print_other "    (z. B. 1,3 oder 1-4), zugeordnet in der Reihenfolge der"
     print_other "    Quellpartitionen"
     print_other "  - Partition(en) sichern: eine oder mehrere am gleichen"
@@ -21021,7 +21177,7 @@ usage() {
     print_other "    mit Einhäng-Status nach dem Start auffrischen"
     print_other "  - Ziel anpassen nach Klonen auf größere Platte"
     print_other "    (parted resizepart + ntfsresize/resize2fs)"
-    print_other "  - Menü-Steuerung: 0 = zurück, 00 = beenden, 000 = abbrechen"
+    print_other "  - Menü-Steuerung: 0 = zurück, 00 = beenden"
     print_other "    (auch in Freitext-Prompts; falsche/leere Pfadangaben"
     print_other "    werden erneut gefragt statt abzubrechen)"
     echo
@@ -21068,6 +21224,7 @@ package_for_command() {
         pacman:gzip) echo "gzip" ;;
         pacman:openssl) echo "openssl" ;;
         pacman:ntfsresize|pacman:ntfsfix|pacman:ntfsinfo) echo "ntfsprogs" ;;
+        pacman:partclone.*) echo "partclone" ;;
 
         apt:lsblk|apt:blockdev|apt:mountpoint) echo "util-linux" ;;
         apt:dd|apt:sha256sum|apt:sync) echo "coreutils" ;;
@@ -21078,6 +21235,7 @@ package_for_command() {
         apt:gzip) echo "gzip" ;;
         apt:openssl) echo "openssl" ;;
         apt:ntfsresize|apt:ntfsfix|apt:ntfsinfo) echo "ntfs-3g" ;;
+        apt:partclone.*) echo "partclone" ;;
 
         apk:lsblk|apk:blockdev|apk:mountpoint) echo "util-linux" ;;
         apk:dd|apk:sha256sum|apk:sync) echo "coreutils" ;;
@@ -21088,6 +21246,7 @@ package_for_command() {
         apk:gzip) echo "gzip" ;;
         apk:openssl) echo "openssl" ;;
         apk:ntfsresize|apk:ntfsfix|apk:ntfsinfo) echo "ntfs-3g-progs" ;;
+        apk:partclone.*) echo "partclone" ;;
 
         *)
             echo ""
@@ -21258,7 +21417,7 @@ menu_choose() {
     for i in "${!options[@]}"; do
         printf '%b\n' "${COLOR_OTHER}$((i + 1)))${COLOR_RESET} ${COLOR_TEXT}${options[$i]}${COLOR_RESET}"
     done
-    printf '%b\n' "${COLOR_OTHER}0)${COLOR_RESET} ${COLOR_TEXT}Zurück${COLOR_RESET}   ${COLOR_OTHER}00)${COLOR_RESET} ${COLOR_TEXT}Beenden${COLOR_RESET}   ${COLOR_OTHER}000)${COLOR_RESET} ${COLOR_TEXT}Abbrechen${COLOR_RESET}"
+    printf '%b\n' "${COLOR_OTHER}0)${COLOR_RESET} ${COLOR_TEXT}Zurück${COLOR_RESET}   ${COLOR_OTHER}00)${COLOR_RESET} ${COLOR_TEXT}Beenden${COLOR_RESET}"
     echo
 
     local choice
@@ -21284,9 +21443,6 @@ menu_choose() {
         fi
         if [[ "$choice" == "00" ]]; then
             menu_quit
-        fi
-        if [[ "$choice" == "000" ]]; then
-            user_abort
         fi
         if [[ "$choice" =~ ^[0-9]+$ ]] &&
             ((choice >= 0 && choice <= ${#options[@]})); then
@@ -21543,7 +21699,6 @@ ask_target_dir() {
         case "$dir" in
             0) exit 0 ;;
             00) menu_quit ;;
-            000) user_abort ;;
         esac
         if [[ -z "$dir" ]]; then
             print_warn "Kein Verzeichnis angegeben – bitte erneut eingeben (0 = zurück)."
@@ -21581,7 +21736,6 @@ ask_image_file() {
         case "$path" in
             0) exit 0 ;;
             00) menu_quit ;;
-            000) user_abort ;;
         esac
         if [[ -z "$path" ]]; then
             print_warn "Kein Pfad angegeben – bitte erneut eingeben (0 = zurück)."
@@ -21611,7 +21765,6 @@ ask_image_base() {
         case "$base" in
             0) exit 0 ;;
             00) menu_quit ;;
-            000) user_abort ;;
         esac
         if [[ -z "$base" ]]; then
             print_warn "Kein Name angegeben – bitte erneut eingeben (0 = zurück)."
@@ -21638,7 +21791,6 @@ ask_output_file() {
         case "$file" in
             0) exit 0 ;;
             00) menu_quit ;;
-            000) user_abort ;;
         esac
         [[ -n "$file" ]] || file="$default_file"
         if [[ -e "$file" ]]; then
@@ -21660,13 +21812,16 @@ choose_image_host() {
     local rows=() row
     local -a opts=() kinds=()
     local dev size fstype label mnt display
-    local zero_label
     local choice i sel srcdev
 
     while true; do
         rows=()
         opts=()
         kinds=()
+        if [[ "$mode" == "start" ]]; then
+            opts+=("Überspringen (keinen Host-Ordner festlegen)")
+            kinds+=("skip")
+        fi
         while IFS= read -r row; do
             rows+=("$row")
         done < <(list_fs_volumes)
@@ -21704,11 +21859,7 @@ choose_image_host() {
             printf '%b\n' "${COLOR_OTHER}$((i + 1)))${COLOR_RESET} ${opts[$i]}"
         done
 
-        zero_label="Zurück"
-        if [[ "$mode" == "start" ]]; then
-            zero_label="Überspringen (keinen Host-Ordner festlegen)"
-        fi
-        printf '%b\n' "${COLOR_OTHER}0)${COLOR_RESET} ${zero_label}   ${COLOR_OTHER}00)${COLOR_RESET} Beenden   ${COLOR_OTHER}000)${COLOR_RESET} Abbrechen"
+        printf '%b\n' "${COLOR_OTHER}0)${COLOR_RESET} Zurück   ${COLOR_OTHER}00)${COLOR_RESET} Beenden"
         echo
 
         print_prompt "Auswahl: "
@@ -21725,12 +21876,13 @@ choose_image_host() {
         if [[ "$choice" == "00" ]]; then
             menu_quit
         fi
-        if [[ "$choice" == "000" ]]; then
-            user_abort
-        fi
         if [[ "$choice" =~ ^[0-9]+$ ]] &&
             ((choice >= 1 && choice <= ${#opts[@]})); then
             sel="${kinds[$((choice - 1))]}"
+            if [[ "$sel" == "skip" ]]; then
+                IMAGE_HOST_DIR=""
+                return 0
+            fi
             if [[ "$sel" == "manual" ]]; then
                 print_prompt "Pfad zum Image-Host-Ordner: "
                 if ! read -r sel; then
@@ -21775,9 +21927,9 @@ collect_image_files() {
 
     IMG_FILES=()
     IMG_NAMES=()
-    for f in "$dir"/*.img "$dir"/*.img.zst "$dir"/*.img.xz "$dir"/*.img.gz \
-        "$dir"/*.img.enc "$dir"/*.img.zst.enc "$dir"/*.img.xz.enc \
-        "$dir"/*.img.gz.enc "$dir"/*.tar; do
+    for f in "$dir"/*.img "$dir"/*.zst "$dir"/*.xz "$dir"/*.gz \
+        "$dir"/*.img.enc "$dir"/*.zst.enc "$dir"/*.xz.enc \
+        "$dir"/*.gz.enc "$dir"/*.tar; do
         [[ -f "$f" ]] || continue
         IMG_FILES+=("$f")
         IMG_NAMES+=("$(basename "$f")")
@@ -21947,11 +22099,11 @@ choose_partition_any() {
     done
     echo
     print_text "Eine Partition (z. B. 3) ODER mehrere (z. B. 3,4,5,6 oder 4-7) angeben."
-    print_text "Mehrere werden in EIN Image gesichert und daraus einzeln wiederherstellbar."
+    print_text "Mehrere werden in EIN Image gesichert und können daraus einzeln wiederhergestellt werden."
     echo
 
     while true; do
-        print_prompt "Auswahl (0 = zurück, 00 = beenden, 000 = abbrechen): "
+        print_prompt "Auswahl (0 = zurück, 00 = beenden): "
         if ! read -r input; then
             die "Vom Benutzer abgebrochen."
         fi
@@ -21962,9 +22114,6 @@ choose_partition_any() {
         fi
         if [[ "$input" == "00" ]]; then
             menu_quit
-        fi
-        if [[ "$input" == "000" ]]; then
-            user_abort
         fi
 
         if [[ -z "$input" ]]; then
@@ -22035,6 +22184,72 @@ fs_of_part() {
     fi
 
     blkid "$1" 2>/dev/null | awk -F'"' '/TYPE=/ { print $2; exit }'
+}
+
+partclone_command_for_fs() {
+    case "${1,,}" in
+        btrfs|ext2|ext3|ext4|exfat|f2fs|jfs|minix|nilfs2|ntfs|reiser4|reiserfs|xfs)
+            printf 'partclone.%s' "${1,,}"
+            ;;
+        hfsplus|hfs+)
+            printf 'partclone.hfsp'
+            ;;
+        ufs|ufs2)
+            printf 'partclone.ufs'
+            ;;
+        fat12|fat16|fat32)
+            printf 'partclone.%s' "${1,,}"
+            ;;
+        vmfs)
+            printf 'partclone.vmfs'
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+choose_imaging_method() {
+    local -a filesystems=("$@")
+    local -a options=()
+    local -a methods=()
+    local fs
+    local partclone_supported=1
+
+    for fs in "${filesystems[@]}"; do
+        if ! partclone_command_for_fs "$fs" >/dev/null; then
+            partclone_supported=0
+            break
+        fi
+    done
+
+    if ((partclone_supported)); then
+        options=("Partclone – nur belegte Dateisystemblöcke" "dd – gesamte Partition inklusive freier Bereiche")
+        methods=(partclone dd)
+    else
+        print_warn "Partclone unterstützt ein oder mehrere ausgewählte Dateisysteme nicht; nur dd ist verfügbar."
+        options=("dd – gesamte Partition inklusive freier Bereiche")
+        methods=(dd)
+    fi
+
+    menu_choose "Imaging-Verfahren wählen:" "${options[@]}"
+    IMAGE_METHOD="${methods[$SELECTED_ITEM_INDEX]}"
+}
+
+require_partclone_tool() {
+    local fs="$1"
+    local tool=""
+
+    tool="$(partclone_command_for_fs "$fs")" ||
+        die "Kein passendes Partclone-Werkzeug für Dateisystem $fs."
+    if ! command_exists "$tool"; then
+        if [[ -z "$(package_for_command "$tool")" ]] || ! install_packages "$tool"; then
+            die "Partclone-Werkzeug fehlt: $tool."
+        fi
+    fi
+    command_exists "$tool" ||
+        die "Partclone-Werkzeug fehlt nach der Installation: $tool."
+    PARTCLONE_TOOL="$tool"
 }
 
 source_disk_of_part() {
@@ -22136,10 +22351,10 @@ choose_compression() {
     if command_exists zstd; then
         options+=("zstd  Stufe 1  – schnellste Kompression, ideal für große Platten")
         kinds+=("zstd1")
-        options+=("zstd  Stufe 3  – bester Kompromiss aus Tempo und Größe (Standard)")
-        kinds+=("zstd3")
-        options+=("zstd  Stufe 19 – maximale Verdichtung, deutlich langsamer")
-        kinds+=("zstd19")
+        options+=("zstd  Stufe 6  – bester Kompromiss aus Tempo und Größe (Standard)")
+        kinds+=("zstd6")
+        options+=("zstd  Stufe 1-19 – Kompressionsstufe selbst wählen")
+        kinds+=("zstd_custom")
     fi
 
     if command_exists xz; then
@@ -22156,14 +22371,34 @@ choose_compression() {
     kinds+=("none")
 
     local ci
+    local zstd_level=""
+    local zstd_level_input=""
     MENU_DEFAULT_CHOICE="1"
     for ci in "${!kinds[@]}"; do
-        if [[ "${kinds[$ci]}" == "zstd3" ]]; then
+        if [[ "${kinds[$ci]}" == "zstd6" ]]; then
             MENU_DEFAULT_CHOICE=$((ci + 1))
         fi
     done
 
     menu_choose "Kompression wählen:" "${options[@]}"
+
+    if [[ "${kinds[$SELECTED_ITEM_INDEX]}" == "zstd_custom" ]]; then
+        while true; do
+            print_prompt "zstd-Kompressionsstufe (1-19): "
+            if ! read -r zstd_level_input; then
+                die "Vom Benutzer abgebrochen."
+            fi
+            case "$zstd_level_input" in
+                0) exit 0 ;;
+                00) menu_quit ;;
+            esac
+            if [[ "$zstd_level_input" =~ ^([1-9]|1[0-9])$ ]]; then
+                zstd_level="$zstd_level_input"
+                break
+            fi
+            print_warn "Bitte eine Kompressionsstufe von 1 bis 19 eingeben."
+        done
+    fi
 
     case "${kinds[$SELECTED_ITEM_INDEX]}" in
         zstd1)
@@ -22172,17 +22407,17 @@ choose_compression() {
             IMAGE_SUFFIX=".zst"
             COMPRESSION="zstd Stufe 1 (multithreaded)"
             ;;
-        zstd3)
-            COMPRESSOR=(zstd -T0 -q -3)
+        zstd6)
+            COMPRESSOR=(zstd -T0 -q -6)
             DECOMPRESSOR=(zstd -d -q -c)
             IMAGE_SUFFIX=".zst"
-            COMPRESSION="zstd Stufe 3 (multithreaded)"
+            COMPRESSION="zstd Stufe 6 (multithreaded)"
             ;;
-        zstd19)
-            COMPRESSOR=(zstd -T0 -q -19)
+        zstd_custom)
+            COMPRESSOR=(zstd -T0 -q "-$zstd_level")
             DECOMPRESSOR=(zstd -d -q -c)
             IMAGE_SUFFIX=".zst"
-            COMPRESSION="zstd Stufe 19 (multithreaded)"
+            COMPRESSION="zstd Stufe $zstd_level (multithreaded)"
             ;;
         xz)
             COMPRESSOR=(xz -T0 -q -6)
@@ -22255,7 +22490,6 @@ ask_passphrase() {
     fi
     printf '\n'
     case "$pw" in
-        000) user_abort ;;
         00) menu_quit ;;
     esac
     ENC_PASSPHRASE="$pw"
@@ -22347,11 +22581,14 @@ create_image() {
     local src=""
     local src_disk=""
     local src_size
+    local source_fs=""
+    local partclone_tool=""
     local image_dir
     local image_base
     local image_path
     local manifest
     local checksum
+    local image_size
     local dir_disk
     local stamp n
     local pipeline_status
@@ -22385,6 +22622,15 @@ create_image() {
 
     src_size="$(dev_size_bytes "$src")"
     warn_windows_source "$src"
+    IMAGE_METHOD="dd"
+    if [[ "$kind" == "part" ]]; then
+        source_fs="$(fs_of_part "$src")"
+        choose_imaging_method "$source_fs"
+        if [[ "$IMAGE_METHOD" == "partclone" ]]; then
+            require_partclone_tool "$source_fs"
+            partclone_tool="$PARTCLONE_TOOL"
+        fi
+    fi
 
     choose_compression
     ask_encryption
@@ -22436,6 +22682,7 @@ create_image() {
     echo
     print_kv_path "Quelle:       " "$src"
     print_kv "Größe:         $(fmt_size "$src_size")"
+    print_kv "Imaging:       $IMAGE_METHOD"
     print_kv "Kompression:   $COMPRESSION"
     if ((ENCRYPT_IMAGE)); then
         print_kv "Verschlüsselung: AES-256-CTR (openssl, PBKDF2, $ENC_ITER Iterationen)"
@@ -22451,6 +22698,8 @@ create_image() {
         date -Iseconds 2>/dev/null || date
         printf 'Quelle: %s\n' "$src"
         printf 'Quellgröße_bytes: %s\n' "$src_size"
+        printf 'Dateisystem: %s\n' "${source_fs:-unbekannt}"
+        printf 'Imaging: %s\n' "$IMAGE_METHOD"
         printf 'Kompression: %s\n' "$COMPRESSION"
         if ((ENCRYPT_IMAGE)); then
             printf 'Verschlüsselung: AES-256-CTR (openssl, PBKDF2, %s Iterationen)\n' "$ENC_ITER"
@@ -22471,34 +22720,47 @@ create_image() {
         write_passcheck "${image_path}.passcheck" ||
             die "Passcheck-Datei (${image_path}.passcheck) konnte nicht erstellt werden."
         set +e
-        dd \
-            if="$src" \
-            bs="$BLOCK_SIZE" \
-            ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
-            ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
-            "${COMPRESSOR[@]}" |
-            openssl enc "${ENC_CIPHER_ARGS[@]}" -pass env:CLONIE_ENC_PASS > "$image_path"
-        pipeline_status=("${PIPESTATUS[@]}")
+        if [[ "$IMAGE_METHOD" == "partclone" ]]; then
+            "$partclone_tool" -c -s "$src" -o - |
+                "${COMPRESSOR[@]}" |
+                openssl enc "${ENC_CIPHER_ARGS[@]}" -pass env:CLONIE_ENC_PASS > "$image_path"
+            pipeline_status=("${PIPESTATUS[@]}")
+        else
+            dd \
+                if="$src" \
+                bs="$BLOCK_SIZE" \
+                ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
+                ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
+                "${COMPRESSOR[@]}" |
+                openssl enc "${ENC_CIPHER_ARGS[@]}" -pass env:CLONIE_ENC_PASS > "$image_path"
+            pipeline_status=("${PIPESTATUS[@]}")
+        fi
         set -e
 
         if ((pipeline_status[0] != 0 || pipeline_status[1] != 0 || pipeline_status[2] != 0)); then
             rm -f -- "$image_path" "${image_path}.passcheck"
-            die "Image-Erstellung fehlgeschlagen (dd=${pipeline_status[0]}, Kompressor=${pipeline_status[1]}, Verschlüsselung=${pipeline_status[2]})."
+            die "Image-Erstellung fehlgeschlagen (Quelle=${pipeline_status[0]}, Kompressor=${pipeline_status[1]}, Verschlüsselung=${pipeline_status[2]})."
         fi
     else
         set +e
-        dd \
-            if="$src" \
-            bs="$BLOCK_SIZE" \
-            ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
-            ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
-            "${COMPRESSOR[@]}" > "$image_path"
-        pipeline_status=("${PIPESTATUS[@]}")
+        if [[ "$IMAGE_METHOD" == "partclone" ]]; then
+            "$partclone_tool" -c -s "$src" -o - |
+                "${COMPRESSOR[@]}" > "$image_path"
+            pipeline_status=("${PIPESTATUS[@]}")
+        else
+            dd \
+                if="$src" \
+                bs="$BLOCK_SIZE" \
+                ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
+                ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
+                "${COMPRESSOR[@]}" > "$image_path"
+            pipeline_status=("${PIPESTATUS[@]}")
+        fi
         set -e
 
         if ((pipeline_status[0] != 0 || pipeline_status[1] != 0)); then
             rm -f -- "$image_path"
-            die "Image-Erstellung fehlgeschlagen (dd=${pipeline_status[0]}, Kompressor=${pipeline_status[1]})."
+            die "Image-Erstellung fehlgeschlagen (Quelle=${pipeline_status[0]}, Kompressor=${pipeline_status[1]})."
         fi
     fi
 
@@ -22506,10 +22768,13 @@ create_image() {
 
     print_text "SHA-256-Prüfsumme wird berechnet ..."
     sha256sum "$image_path" > "$checksum"
+    image_size="$(stat -c '%s' -- "$image_path")" ||
+        die "Größe von $image_path konnte nicht ermittelt werden."
 
     echo
     print_other "Image erfolgreich erstellt:"
     print_kv_path "   Image:        " "$image_path"
+    print_kv "Archivgröße: $(fmt_size "$image_size")"
     print_kv_path "   Manifest:     " "$manifest"
     print_kv_path "   Prüfsumme:    " "$checksum"
     if ((ENCRYPT_IMAGE)); then
@@ -22537,7 +22802,7 @@ restore_image() {
 
     case "$image" in
         *.tar)
-            print_text "Partitions-Image erkannt – Wiederherstellung läuft über den Multi-Restore."
+            print_text "Partitions-Image erkannt – Wiederherstellung wird gestartet."
             multi_restore_run "$image"
             return 0
             ;;
@@ -22554,13 +22819,15 @@ restore_image_run() {
     local tgt=""
     local tgt_disk=""
     local tgt_size
+    local imaging=""
+    local source_fs=""
     local pipeline_status
 
     [[ -f "$image" ]] || die "Image nicht gefunden: $image"
 
     case "$image" in
         *.tar)
-            die "Mehrpartitions-Image erkannt – 'Image zurückspielen (recover)' routet .tar automatisch an den Multi-Restore."
+            die "Partitions-Image erkannt – bitte über 'Backup Wiederherstellen (recover)' öffnen."
             ;;
     esac
 
@@ -22587,6 +22854,24 @@ restore_image_run() {
 
     if [[ -f "${image}.manifest.txt" ]]; then
         src_size="$(awk -F': ' '$1 == "Quellgröße_bytes" { print $2; exit }' "${image}.manifest.txt")"
+        imaging="$(manifest_value "${image}.manifest.txt" "Imaging")"
+        source_fs="$(manifest_value "${image}.manifest.txt" "Dateisystem")"
+    fi
+
+    case "$imaging" in
+        ""|dd)
+            imaging="dd"
+            ;;
+        partclone)
+            require_partclone_tool "$source_fs"
+            ;;
+        *)
+            die "Image-Format nicht unterstützt: $imaging."
+            ;;
+    esac
+
+    if [[ "$imaging" == "partclone" ]]; then
+        print_text "Partitions-Image wird mit Partclone wiederhergestellt."
     fi
 
     echo
@@ -22623,7 +22908,28 @@ restore_image_run() {
 
     print_other "Wiederherstellung läuft ..."
 
-    if (( ${#DECRYPTOR[@]} > 0 )); then
+    if [[ "$imaging" == "partclone" && ${#DECRYPTOR[@]} -gt 0 ]]; then
+        set +e
+        "${DECRYPTOR[@]}" -in "$image" |
+            "${DECOMPRESSOR[@]}" |
+            "$PARTCLONE_TOOL" -r -s - -o "$tgt"
+        pipeline_status=("${PIPESTATUS[@]}")
+        set -e
+
+        if ((pipeline_status[0] != 0 || pipeline_status[1] != 0 || pipeline_status[2] != 0)); then
+            die "Wiederherstellung fehlgeschlagen (Entschlüsselung=${pipeline_status[0]}, Dekompressor=${pipeline_status[1]}, Partclone=${pipeline_status[2]})."
+        fi
+    elif [[ "$imaging" == "partclone" ]]; then
+        set +e
+        "${DECOMPRESSOR[@]}" "$image" |
+            "$PARTCLONE_TOOL" -r -s - -o "$tgt"
+        pipeline_status=("${PIPESTATUS[@]}")
+        set -e
+
+        if ((pipeline_status[0] != 0 || pipeline_status[1] != 0)); then
+            die "Wiederherstellung fehlgeschlagen (Dekompressor=${pipeline_status[0]}, Partclone=${pipeline_status[1]})."
+        fi
+    elif (( ${#DECRYPTOR[@]} > 0 )); then
         set +e
         "${DECRYPTOR[@]}" -in "$image" |
             "${DECOMPRESSOR[@]}" |
@@ -23117,11 +23423,13 @@ multi_backup_run() {
     local sel_paths=("$@")
     local -a part_sizes=()
     local -a part_fses=()
+    local -a part_imagings=()
+    local -a part_tools=()
     local -a part_bases=()
     local -a kept_files=()
     local -a meta_files=(MANIFEST.txt)
     local part part_size part_fs part_base part_file
-    local image_dir image_base image_path checksum
+    local image_dir image_base image_path checksum image_size
     local dir_disk
     local stamp n
     local tmpdir
@@ -23148,6 +23456,17 @@ multi_backup_run() {
         part_fses+=("$part_fs")
         part_bases+=("$part_base")
         print_kv_path "   " "$part  $(fmt_size "$part_size")"
+    done
+
+    choose_imaging_method "${part_fses[@]}"
+    for count in "${!part_fses[@]}"; do
+        part_imagings+=("$IMAGE_METHOD")
+        if [[ "$IMAGE_METHOD" == "partclone" ]]; then
+            require_partclone_tool "${part_fses[$count]}"
+            part_tools+=("$PARTCLONE_TOOL")
+        else
+            part_tools+=("")
+        fi
     done
 
     choose_compression
@@ -23246,6 +23565,7 @@ multi_backup_run() {
             printf 'Quelle: %s\n' "$part"
             printf 'Quellgröße_bytes: %s\n' "${part_sizes[$count]}"
             printf 'Dateisystem: %s\n' "${part_fses[$count]}"
+            printf 'Imaging: %s\n' "${part_imagings[$count]}"
         } >> "$tmpdir/MANIFEST.txt"
         count=$((count + 1))
     done
@@ -23269,34 +23589,47 @@ multi_backup_run() {
 
         if ((ENCRYPT_IMAGE)); then
             set +e
-            dd \
-                if="$part" \
-                bs="$BLOCK_SIZE" \
-                ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
-                ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
-                "${COMPRESSOR[@]}" |
-                openssl enc "${ENC_CIPHER_ARGS[@]}" -pass env:CLONIE_ENC_PASS > "$tmpdir/$part_file"
-            pipeline_status=("${PIPESTATUS[@]}")
+            if [[ "${part_imagings[$count]}" == "partclone" ]]; then
+                "${part_tools[$count]}" -c -s "$part" -o - |
+                    "${COMPRESSOR[@]}" |
+                    openssl enc "${ENC_CIPHER_ARGS[@]}" -pass env:CLONIE_ENC_PASS > "$tmpdir/$part_file"
+                pipeline_status=("${PIPESTATUS[@]}")
+            else
+                dd \
+                    if="$part" \
+                    bs="$BLOCK_SIZE" \
+                    ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
+                    ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
+                    "${COMPRESSOR[@]}" |
+                    openssl enc "${ENC_CIPHER_ARGS[@]}" -pass env:CLONIE_ENC_PASS > "$tmpdir/$part_file"
+                pipeline_status=("${PIPESTATUS[@]}")
+            fi
             set -e
 
             if ((pipeline_status[0] != 0 || pipeline_status[1] != 0 || pipeline_status[2] != 0)); then
                 rm -f -- "$image_path"
-                die "Sicherung von $part fehlgeschlagen (dd=${pipeline_status[0]}, Kompressor=${pipeline_status[1]}, Verschlüsselung=${pipeline_status[2]})."
+                die "Sicherung von $part fehlgeschlagen (Quelle=${pipeline_status[0]}, Kompressor=${pipeline_status[1]}, Verschlüsselung=${pipeline_status[2]})."
             fi
         else
             set +e
-            dd \
-                if="$part" \
-                bs="$BLOCK_SIZE" \
-                ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
-                ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
-                "${COMPRESSOR[@]}" > "$tmpdir/$part_file"
-            pipeline_status=("${PIPESTATUS[@]}")
+            if [[ "${part_imagings[$count]}" == "partclone" ]]; then
+                "${part_tools[$count]}" -c -s "$part" -o - |
+                    "${COMPRESSOR[@]}" > "$tmpdir/$part_file"
+                pipeline_status=("${PIPESTATUS[@]}")
+            else
+                dd \
+                    if="$part" \
+                    bs="$BLOCK_SIZE" \
+                    ${DD_FULLBLOCK[@]+"${DD_FULLBLOCK[@]}"} \
+                    ${DD_STATUS[@]+"${DD_STATUS[@]}"} |
+                    "${COMPRESSOR[@]}" > "$tmpdir/$part_file"
+                pipeline_status=("${PIPESTATUS[@]}")
+            fi
             set -e
 
             if ((pipeline_status[0] != 0 || pipeline_status[1] != 0)); then
                 rm -f -- "$image_path"
-                die "Sicherung von $part fehlgeschlagen (dd=${pipeline_status[0]}, Kompressor=${pipeline_status[1]})."
+                die "Sicherung von $part fehlgeschlagen (Quelle=${pipeline_status[0]}, Kompressor=${pipeline_status[1]})."
             fi
         fi
 
@@ -23328,16 +23661,19 @@ multi_backup_run() {
 
     print_text "SHA-256-Prüfsumme des Images wird berechnet ..."
     sha256sum "$image_path" > "$checksum"
+    image_size="$(stat -c '%s' -- "$image_path")" ||
+        die "Größe von $image_path konnte nicht ermittelt werden."
 
     echo
     print_other "Partitions-Image erfolgreich erstellt:"
     print_kv_path "   Image:        " "$image_path"
+    print_kv "Archivgröße: $(fmt_size "$image_size")"
     print_kv_path "   Prüfsumme:    " "$checksum"
     if ((ENCRYPT_IMAGE)); then
         print_text "   Verschlüsselung: AES-256-CTR (Passcheck-Member im Image)"
     fi
     print_text "   Enthalten: ${part_bases[*]}"
-    print_text "   Einzeln zurückspielbar über 'Partitions-Image (Multi) zurückspielen'."
+    print_text "   Einzeln wiederherstellbar über 'Backup Wiederherstellen (recover)'."
 }
 
 multi_restore_run() {
@@ -23347,11 +23683,14 @@ multi_restore_run() {
     local -a names=()
     local -a sizes=()
     local -a fses=()
+    local -a imagings=()
     local -a sources=()
     local -a name_tokens=()
     local -a sel_names=()
     local -a sel_sizes=()
     local -a sel_fses=()
+    local -a sel_imagings=()
+    local -a sel_tools=()
     local -a sel_sources=()
     local -a sel_members=()
     local -a targets=()
@@ -23363,7 +23702,7 @@ multi_restore_run() {
 
     echo
     print_heading "=============================================="
-    print_heading "  PARTITIONS-IMAGE ZURÜCKSPIELEN (Multi)"
+    print_heading "  PARTITIONS-IMAGE WIEDERHERSTELLEN"
     print_heading "=============================================="
     echo
 
@@ -23393,7 +23732,7 @@ multi_restore_run() {
     TMP_CLEANUP="$tmpdir"
 
     if ! tar -xf "$image" -C "$tmpdir" MANIFEST.txt; then
-        die "Image enthält kein MANIFEST.txt – kein clonie-Mehrpartitions-Image?"
+        die "Image enthält kein MANIFEST.txt – kein gültiges clonie-Partitions-Image?"
     fi
 
     if tar -tf "$image" | grep -qx 'clonie-passcheck'; then
@@ -23416,6 +23755,7 @@ multi_restore_run() {
         names+=("$part_name")
         sizes+=("$(manifest_value "$tmpdir/MANIFEST.txt" "Quellgröße_bytes" "$part_name")")
         fses+=("$(manifest_value "$tmpdir/MANIFEST.txt" "Dateisystem" "$part_name")")
+        imagings+=("$(manifest_value "$tmpdir/MANIFEST.txt" "Imaging" "$part_name")")
         sources+=("$(manifest_value "$tmpdir/MANIFEST.txt" "Quelle" "$part_name")")
     done
 
@@ -23438,9 +23778,6 @@ multi_restore_run() {
         if [[ "$sel_norm" == "00" ]]; then
             menu_quit
         fi
-        if [[ "$sel_norm" == "000" ]]; then
-            user_abort
-        fi
         if parse_selection "$sel_norm" "${#names[@]}"; then
             break
         fi
@@ -23458,8 +23795,25 @@ multi_restore_run() {
         sel_names+=("$part_name")
         sel_sizes+=("${sizes[$((n - 1))]}")
         sel_fses+=("${fses[$((n - 1))]}")
+        sel_imagings+=("${imagings[$((n - 1))]}")
         sel_sources+=("${sources[$((n - 1))]}")
         sel_members+=("$member")
+    done
+
+    for i in "${!sel_names[@]}"; do
+        case "${sel_imagings[$i]}" in
+            ""|dd)
+                sel_imagings[i]="dd"
+                sel_tools+=("")
+                ;;
+            partclone)
+                require_partclone_tool "${sel_fses[$i]}"
+                sel_tools+=("$PARTCLONE_TOOL")
+                ;;
+            *)
+                die "Image-Format nicht unterstützt: ${sel_imagings[$i]}."
+                ;;
+        esac
     done
 
     local -a rows=()
@@ -23493,7 +23847,7 @@ multi_restore_run() {
     print_text "Eine Zahl oder mehrere (z. B. 1,3 oder 1-4); Anzahl: ${#sel_names[@]}."
 
     while true; do
-        print_prompt "Ziele (0 = zurück, 00 = beenden, 000 = abbrechen): "
+        print_prompt "Ziele (0 = zurück, 00 = beenden): "
         if ! read -r sel_input; then
             die "Vom Benutzer abgebrochen."
         fi
@@ -23503,9 +23857,6 @@ multi_restore_run() {
         fi
         if [[ "$sel_norm" == "00" ]]; then
             menu_quit
-        fi
-        if [[ "$sel_norm" == "000" ]]; then
-            user_abort
         fi
         if ! parse_selection "$sel_norm" "${#all_paths[@]}"; then
             print_text "Ungültige Auswahl: ${sel_norm:-leer}"
@@ -23587,7 +23938,28 @@ multi_restore_run() {
 
         print_other "Wiederherstellung läuft ($part_name -> $tgt) ..."
 
-        if (( ${#DECRYPTOR[@]} > 0 )); then
+        if [[ "${sel_imagings[$i]}" == "partclone" && ${#DECRYPTOR[@]} -gt 0 ]]; then
+            set +e
+            "${DECRYPTOR[@]}" -in "$tmpdir/$member_base" |
+                "${DECOMPRESSOR[@]}" |
+                "${sel_tools[$i]}" -r -s - -o "$tgt"
+            pipeline_status=("${PIPESTATUS[@]}")
+            set -e
+
+            if ((pipeline_status[0] != 0 || pipeline_status[1] != 0 || pipeline_status[2] != 0)); then
+                die "Wiederherstellung fehlgeschlagen (Entschlüsselung=${pipeline_status[0]}, Dekompressor=${pipeline_status[1]}, Partclone=${pipeline_status[2]})."
+            fi
+        elif [[ "${sel_imagings[$i]}" == "partclone" ]]; then
+            set +e
+            "${DECOMPRESSOR[@]}" "$tmpdir/$member_base" |
+                "${sel_tools[$i]}" -r -s - -o "$tgt"
+            pipeline_status=("${PIPESTATUS[@]}")
+            set -e
+
+            if ((pipeline_status[0] != 0 || pipeline_status[1] != 0)); then
+                die "Wiederherstellung fehlgeschlagen (Dekompressor=${pipeline_status[0]}, Partclone=${pipeline_status[1]})."
+            fi
+        elif (( ${#DECRYPTOR[@]} > 0 )); then
             set +e
             "${DECRYPTOR[@]}" -in "$tmpdir/$member_base" |
                 "${DECOMPRESSOR[@]}" |
@@ -23637,13 +24009,13 @@ main_menu() {
     local options=(
         "Festplatte 1:1 klonen"
         "Partition 1:1 klonen"
-        "Image von Festplatte erstellen (komprimiert)"
-        "Image von Partition(en) erstellen (komprimiert)"
-        "Image zurückspielen (recover)"
+        "Festplatten Backup (komprimiert)"
+        "Partitions Backup (komprimiert)"
+        "Backup Wiederherstellen (recover)"
         "Partitionstabelle sichern (sfdisk-Dump)"
         "Partitionstabelle zurückspielen"
-        "Image-Host-Ordner wählen/wechseln"
-        "Festplatten erneut einlesen"
+        "Image-Ordner wählen/wechseln"
+        "Festplatten neu einlesen"
     )
 
     local rc
@@ -23696,9 +24068,6 @@ main_menu() {
             exit "$rc"
         fi
 
-        echo
-        print_prompt "Eingabetaste fürs Hauptmenü ..."
-        read -r || { print_other "Auf Wiedersehen."; exit 0; }
     done
 }
 
