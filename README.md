@@ -19,8 +19,7 @@ Die vier Live-Tools können jeweils:
 
 - eine **Live-ISO vom laufenden System** erstellen (BIOS **und** UEFI bootfähig, remastert — das eigene System als bootbares Abbild), von **Server- und Desktop-Systemen** (Server = ohne grafische Oberfläche),
 - das **Live-System auf Festplatte/Partition installieren** (inkl. Bootloader),
-- **Festplatten/Partitionen partitionieren und formatieren** (interaktiver Partitionierer),
-- Bau-Artefakte **aufräumen** und mögliche **Installationsziele anzeigen**.
+- **Festplatten/Partitionen partitionieren und formatieren** (interaktiver Partitionierer).
 
 **Clonie** (ebenfalls als Datenblock eingebettet) ergänzt die Sammlung um:
 
@@ -68,8 +67,6 @@ Im Tool-Menü gilt überall:
 | Live-ISO vom laufenden System (BIOS + UEFI) | ✓ | ✓ | ✓ | ✓ (mkalpe-live) |
 | Live-System auf Festplatte/Partition installieren | ✓ | ✓ | ✓ | ✓ (alpe-install, offline) |
 | Partitionierer (GPT/MBR, anlegen/löschen/formatieren, Flags ESP/BIOS-Boot) | ✓ | ✓ | ✓ | ✓ (alpe-part) |
-| Aufräumen der ISO-Bau-Artefakte | ✓ | ✓ | ✓ | ✓ |
-| Mögliche Installationsziele anzeigen | ✓ | ✓ | ✓ | ✓ |
 | Einzelskripte exportieren (Partitionierer/ISO/Installation) | ✓ | ✓ | ✓ | ✓ |
 | SquashFS-Kompression wählbar (xz/zstd/lzma/gzip/lzo/lz4) | ✓ | ✓ | ✓ | ✓ |
 
@@ -315,8 +312,7 @@ The four live tools can each:
   remastered — your own system as a bootable image), from **server and desktop
   systems** (server = without graphical interface),
 - **install the live system to a disk or partition** (including bootloader),
-- **partition and format disks/partitions** (interactive partitioner),
-- **clean up** build artifacts and **show possible installation targets**.
+- **partition and format disks/partitions** (interactive partitioner).
 
 **Clonie** (also embedded as a data block) adds to the collection:
 
@@ -363,8 +359,6 @@ tool menus, everywhere:
 | Live ISO from the running system (BIOS + UEFI) | ✓ | ✓ | ✓ | ✓ (mkalpe-live) |
 | Install the live system to disk/partition | ✓ | ✓ | ✓ | ✓ (alpe-install, offline) |
 | Partitioner (GPT/MBR, create/delete/format, ESP/BIOS-boot flags) | ✓ | ✓ | ✓ | ✓ (alpe-part) |
-| Clean up ISO build artifacts | ✓ | ✓ | ✓ | ✓ |
-| Show possible installation targets | ✓ | ✓ | ✓ | ✓ |
 | Export standalone scripts (partitioner/ISO/installation) | ✓ | ✓ | ✓ | ✓ |
 | Selectable SquashFS compression (xz/zstd/lzma/gzip/lzo/lz4) | ✓ | ✓ | ✓ | ✓ |
 
