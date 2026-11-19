@@ -103,8 +103,7 @@ Werkzeug für Festplatten und Partitionen:
   `.enc`) — das Passwort wird per Passcheck-Datei verifiziert, **bevor** das
   Ziel überschrieben wird
 - Eigene Einhängungen (Image-Host-Ordner) werden beim Beenden ausgehängt
-- Menü-Steuerung wie überall: **0** = zurück, **00** = beenden,
-  **000** = abbrechen
+- Menü-Steuerung: **0** = zurück, **00** = beenden
 
 ### Befehlszeile (CLI)
 
@@ -395,7 +394,7 @@ for disks and partitions:
   the password is verified via a passcheck file **before** the target is
   overwritten
 - own mounts (image host directory) are unmounted at exit
-- menu control like everywhere: **0** = back, **00** = quit, **000** = abort
+- menu control: **0** = back, **00** = quit
 
 ### Command line (CLI)
 
